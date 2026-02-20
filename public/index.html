@@ -513,11 +513,19 @@
             if (foundRow) {
                 container.style.display = 'block';
                 // Indexes from debug:
-                // 14: % Hoàn thành Tiền
-                // 15: Thiếu để đạt
+                // Tùy theo cột, ví dụ Row 7: 
+                // 13: % Hoàn thành (KH), 14: % Hoàn thành Tiền, 15: Thiếu để đạt
+                // Lưu ý row parser có thể có cột thừa trống. Trong file tải lên, index 14 là "74.02", index 15 là số tiền thiếu.
 
-                const pct = parseFloat(foundRow[14]) || 0;
-                const thieu = parseFloat(foundRow[15]) || 0;
+                let pct = parseFloat(foundRow[14]) || 0;
+                let thieu = parseFloat(foundRow[15]) || 0;
+
+                // Cẩn thận trường hợp cột bị lệch do merged headers, check index 13, 14, 15
+                if (foundRow[13] && !isNaN(parseFloat(foundRow[13])) && !foundRow[14]) {
+                    // Nếu 14 trống thì có thể dữ liệu nằm ở 13 và 14
+                    pct = parseFloat(foundRow[13]) || 0;
+                    thieu = parseFloat(foundRow[14]) || 0;
+                }
 
                 const tr = document.createElement('tr');
 
