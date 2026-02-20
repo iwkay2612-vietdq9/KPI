@@ -24,7 +24,9 @@ app.use(express.static('public'));
 
 // API to get Excel data
 app.get('/api/data', (req, res) => {
-    const filePath = path.join(__dirname, 'filetiendo.xlsx');
+    const dataDir = process.env.DATA_DIR || __dirname;
+    const filePath = path.join(dataDir, 'filetiendo.xlsx');
+    console.log("Using data file at:", filePath);
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'Data file not found' });
@@ -58,7 +60,8 @@ app.get('/api/data', (req, res) => {
 
 // API to get Cước sheet data
 app.get('/api/cuoc', (req, res) => {
-    const filePath = path.join(__dirname, 'filetiendo.xlsx');
+    const dataDir = process.env.DATA_DIR || __dirname;
+    const filePath = path.join(dataDir, 'filetiendo.xlsx');
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'Data file not found' });
@@ -98,8 +101,9 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             return res.status(400).send('Chưa chọn file.');
         }
 
-        const uploadedFilePath = path.join(__dirname, 'uploaded_data.xlsx');
-        const targetFilePath = path.join(__dirname, 'filetiendo.xlsx');
+        const dataDir = process.env.DATA_DIR || __dirname;
+        const uploadedFilePath = path.join(__dirname, 'uploaded_data.xlsx'); // Upload stays in temp/root
+        const targetFilePath = path.join(dataDir, 'filetiendo.xlsx');
         console.log("Uploaded File Path:", uploadedFilePath);
         console.log("Target File Path:", targetFilePath);
 
