@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bảng Tính Điểm Cá Nhân</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #fff;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            padding: 10px;
+        }
+
+        h1 {
+            text-align: center;
+            color: black;
+            text-transform: uppercase;
+            margin: 0;
+            padding: 10px;
+            background-color: #FFFF00;
+            /* Yellow Header */
+            font-weight: bold;
+            font-size: 24px;
+            border: 1px solid #000;
+        }
+
+        .controls {
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        select {
+            padding: 5px;
+            font-size: 16px;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+            border: 1px solid #000;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 5px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        /* Column Widths */
+        .col-metric {
+            width: 35%;
+            text-align: left;
+        }
+
+        .col-val {
+            width: 8%;
+        }
+
+        /* Header specific styling */
+        .header-name {
+            background-color: #00B0F0;
+            /* Blue */
+            font-weight: bold;
+            font-size: 18px;
+            color: black;
+        }
+
+        .header-col {
+            background-color: #E7E6E6;
+            /* Light Grey */
+            font-weight: bold;
+            color: #C00000;
+            /* Red Text */
+        }
+
+        .bg-green {
+            background-color: #92D050;
+        }
+
+        /* Green for "Điểm Đạt" */
+        .bg-yellow {
+            background-color: #FFFF00;
+        }
+
+        /* Yellow highlight */
+        .bg-red {
+            background-color: #FF0000;
+            color: white;
+        }
+
+        .text-red {
+            color: #FF0000;
+            font-weight: bold;
+        }
+
+        .text-blue {
+            color: #0070C0;
+            font-weight: bold;
+        }
+
+        .sub-header {
+            background-color: #BDD7EE;
+            /* Light Blue for Category */
+            font-weight: bold;
+            text-align: left;
+            padding-left: 10px;
+            text-transform: uppercase;
+        }
+
+        .footer-row {
+            font-weight: bold;
+            color: red;
+            font-size: 16px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Bảng tính điểm cá nhân Kinh doanh</h1>
+
+        <div class="controls">
+            <select id="employeeSelect">
+                <option value="">-- Chọn Nhân Viên --</option>
+            </select>
+        </div>
+
+        <div id="status" class="loading">Đang tải dữ liệu...</div>
+
+        <div id="scorecardArea" style="display:none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="header-name" id="employeeNameDisplay">-- Name --</th>
+                        <th class="header-col">KH</th>
+                        <th class="header-col">TH</th>
+                        <th class="header-col">Tỷ lệ hoàn thành</th>
+                        <th class="header-col">Điểm Chuẩn</th>
+                        <th class="header-col">Điểm tối đa</th>
+                        <th class="header-col bg-green">Điểm Đạt theo chỉ tiêu</th>
+                        <th class="header-col" style="background-color: #DAEEF3;">Thiếu để đạt 100%</th>
+                    </tr>
+                </thead>
+                <tbody id="scorecardBody">
+                    <!-- Javascript will populate this -->
+                </tbody>
+                <tfoot>
+                    <tr class="footer-row">
+                        <td colspan="6" style="text-align: center;">Tổng Điểm hoàn thành</td>
+                        <td id="totalScore" style="background-color: #00B0F0; color: black;">0.00</td>
+                        <td></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', initialize);
+
+        let rawData = [];
+
+        // Configuration map for metrics based on Image
+        // Key: Part of the metric name to match (case insensitive)
+        const metricConfig = [
+            { key: "TBTS_PTM", std: 10, max: 12 },
+            { key: "THS Đôi dây PTM", std: 10, max: 13 },
+            { key: "gói 5G", std: 10, max: 13 },
+            { key: "FTTH phát triển mới", std: 15, max: 19.5 },
+            { key: "Supernet", std: 10, max: 12 },
+            { key: "Truyền hình", std: 10, max: 13 },
+            { key: "rời mạng", std: 10, max: 12, reverse: true }, // Logic might be different
+            { key: "FTTH Rời mạng", std: 10, max: 12, reverse: true },
+            { key: "TV360", std: 5, max: 6 },
+            { key: "Mybox", std: 1, max: 1.2 },
+            { key: "IOT", std: 10, max: 12 },
+            { key: "N1-N3", std: 10, max: 13 },
+            { key: "standard", std: 5, max: 6 }
+        ];
+
+        function getMetricConfig(name) {
+            const lower = name.toLowerCase();
+            for (const cfg of metricConfig) {
+                if (lower.includes(cfg.key.toLowerCase())) {
+                    return cfg;
+                }
+            }
+            return { std: 10, max: 10 }; // Default
+        }
+
+        async function initialize() {
+            try {
+                const response = await fetch('/api/data');
+                // ... (rest of fetch logic same as before, see processData) ...       
+                if (!response.ok) throw new Error('Failed');
+                const json = await response.json();
+                processData(json);
+            } catch (err) {
+                document.getElementById('status').textContent = 'Lỗi kết nối.';
+            }
+        }
+
+        function processData(data) {
+            if (!Array.isArray(data) || !Array.isArray(data[0])) {
+                document.getElementById('status').textContent = 'Invalid Data Format';
+                return;
+            }
+            rawData = data;
+            const empSelect = document.getElementById('employeeSelect');
+            const statusDiv = document.getElementById('status');
+
+            // Allowed Employees List
+            const allowedEmployees = [
+                "Lê Trọng An", "Bùi Thu Hằng", "Bằng Trung Hiếu", "Trần Văn Hùng",
+                "Nguyễn Thị Song Hương", "Vũ Thị Thu Hương", "Phạm Mỹ Linh",
+                "Vũ Đức Nhuận", "Nguyễn Thị Thu Phượng", "Lê Thanh Sang",
+                "Trương Văn Sang", "Đặng Thị Tám", "Nguyễn Thị Huyền Thương",
+                "Vòng Vĩnh Vân"
+            ];
+
+            const firstDataRowIndex = 4;
+            let found = false;
+
+            for (let i = firstDataRowIndex; i < rawData.length; i++) {
+                const row = rawData[i];
+                const name = row[0];
+                if (name && typeof name === 'string') {
+                    const empName = name.trim();
+                    if (allowedEmployees.includes(empName)) {
+                        const opt = document.createElement('option');
+                        opt.value = i;
+                        opt.textContent = empName;
+                        empSelect.appendChild(opt);
+                        found = true;
+                    }
+                }
+            }
+
+            if (!found) statusDiv.textContent = 'Không tìm thấy nhân viên.';
+            else statusDiv.style.display = 'none';
+
+            empSelect.addEventListener('change', (e) => {
+                const rowIndex = e.target.value;
+                if (rowIndex) {
+                    document.getElementById('scorecardArea').style.display = 'block';
+                    renderScorecard(rowIndex);
+                } else {
+                    document.getElementById('scorecardArea').style.display = 'none';
+                }
+            });
+        }
+
+        function renderScorecard(rowIndex) {
+            const row = rawData[rowIndex];
+            const tbody = document.getElementById('scorecardBody');
+            tbody.innerHTML = '';
+            document.getElementById('employeeNameDisplay').textContent = row[0];
+
+            const categoryRow = rawData[1];
+            const metricNameRow = rawData[2];
+
+            let totalScore = 0;
+            let currentCategory = "";
+            let items = [];
+
+            const ignoredMetrics = [
+                "Thuê bao thực 4G",
+                "Khôi phục THS",
+                "Mybox"
+            ];
+
+            // 1. Parse all items first
+            for (let i = 3; i < row.length; i++) {
+                // Category
+                if (categoryRow[i]) {
+                    currentCategory = categoryRow[i];
+                    items.push({ type: 'category', name: currentCategory });
+                }
+
+                const metricName = metricNameRow[i];
+                if (metricName) {
+                    // Check ignore list
+                    let shouldSkip = false;
+                    for (const ignored of ignoredMetrics) {
+                        if (metricName.toLowerCase().includes(ignored.toLowerCase())) {
+                            shouldSkip = true;
+                            break;
+                        }
+                    }
+
+                    if (shouldSkip) {
+                        i += 3;
+                        continue;
+                    }
+
+                    const valKH = parseFloat(row[i]) || 0;
+                    const valTH = parseFloat(row[i + 1]) || 0;
+                    const valPct = parseFloat(row[i + 2]) || 0; // Excel %
+
+                    items.push({
+                        type: 'metric',
+                        name: metricName,
+                        kh: valKH,
+                        th: valTH,
+                        pct: valPct,
+                        originalIndex: i
+                    });
+
+                    i += 3; // Jump
+                }
+            }
+
+            // 2. Merge Logic (Camera + MyKid)
+            const idxCamera = items.findIndex(item => item.type === 'metric' && item.name.toLowerCase().includes('camera'));
+            const idxMyKid = items.findIndex(item => item.type === 'metric' && item.name.toUpperCase() === 'MYKID'); // Exact match preferred or check dump
+
+            if (idxCamera !== -1 && idxMyKid !== -1) {
+                const cam = items[idxCamera];
+                const kid = items[idxMyKid];
+
+                // Remove MyKid
+                items.splice(idxMyKid, 1);
+
+                // Update Camera to be "Camera + MyKid"
+                // Re-fetch Camera index just in case splice shifted it (if MyKid was before Camera, unlikely)
+                // Actually safer to use object ref if not splicing before it.
+                // Camera is usually index ~3, MyKid ~end.
+
+                cam.name = "Camera + MyKid";
+                cam.kh = cam.kh + kid.kh;
+                cam.th = cam.th + kid.th;
+                // Recalculate % for display/score?
+                // User said "điểm chỉ có 10 với kh là hai cái cộng lại".
+                // Implies we calculate score based on NEW performance? 
+                // Or sum of scores? Usually performance = Total TH / Total KH.
+                cam.pct = cam.kh > 0 ? cam.th / cam.kh : 0;
+
+                // We need to force the Standard Score to 10 for this new metric.
+                // We'll handle this in the render loop by adding a custom property or updating mapping.
+                cam.customStd = 10;
+                cam.customMax = 12; // Assumption or default? User said "điểm chỉ có 10". Let's assume standard max logic.
+            }
+
+            // 3. Render
+            items.forEach(item => {
+                if (item.type === 'category') {
+                    const trCat = document.createElement('tr');
+                    trCat.innerHTML = `<td colspan="8" class="sub-header">${item.name}</td>`;
+                    tbody.appendChild(trCat);
+                } else if (item.type === 'metric') {
+                    const cfg = getMetricConfig(item.name);
+                    const std = item.customStd || cfg.std;
+                    const max = item.customMax || cfg.max;
+
+                    // Calc Score
+                    let diemDat = 0;
+                    if (item.customStd) {
+                        // Recalculated merged KPI
+                        diemDat = item.pct * std;
+                    } else if (!isNaN(item.pct)) {
+                        // Standard Excel KPI
+                        diemDat = item.pct * std;
+                    }
+
+                    if (diemDat > max) diemDat = max;
+
+                    // Thiếu
+                    let thieu = item.kh - item.th;
+                    if (thieu < 0) thieu = 0;
+
+                    const tr = document.createElement('tr');
+
+                    let pctDisplay = (item.pct * 100).toFixed(2) + '%';
+
+                    // Highlight classes could be added here
+
+                    tr.innerHTML = `
+                         <td class="col-metric">${item.name}</td>
+                         <td class="bg-yellow" style="font-weight:bold;">${item.kh}</td>
+                         <td>${item.th}</td>
+                         <td>${pctDisplay}</td>
+                         <td class="text-red">${std}</td>
+                         <td class="text-red">${max}</td>
+                         <td class="bg-green" style="font-weight:bold;">${diemDat.toFixed(2)}</td>
+                         <td class="bg-yellow" style="font-weight:bold;">${thieu.toFixed(2)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                    totalScore += diemDat;
+                }
+            });
+
+            document.getElementById('totalScore').textContent = totalScore.toFixed(2);
+        }
+    </script>
+</body>

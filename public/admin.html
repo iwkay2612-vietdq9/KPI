@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Cập Nhật Dữ Liệu</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background-color: #f4f7f6;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        input[type="file"] {
+            margin-bottom: 20px;
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        button {
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            width: 100%;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #219150;
+        }
+
+        #message {
+            margin-top: 15px;
+            font-size: 14px;
+        }
+
+        .success {
+            color: #27ae60;
+        }
+
+        .error {
+            color: #e74c3c;
+        }
+
+        .back-link {
+            display: block;
+            margin-top: 20px;
+            color: #3498db;
+            text-decoration: none;
+            font-size: 14px;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="card">
+        <h1>Cập Nhật File Tiến Độ (Import GBOC)</h1>
+        <form id="uploadForm">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="password" style="display:block; margin-bottom:5px;">Mật khẩu Admin:</label>
+                <input type="password" id="password" name="password" required
+                    style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="file" style="display:block; margin-bottom:5px;">File dữ liệu đầu vào (.xlsx):</label>
+                <input type="file" id="file" name="file" accept=".xlsx, .xls" required />
+            </div>
+            <button type="submit">Cập nhật dữ liệu</button>
+        </form>
+        <div id="message"></div>
+        <a href="/" class="back-link">← Quay lại trang chủ</a>
+    </div>
+
+    <script>
+        const form = document.getElementById('uploadForm');
+        const messageDiv = document.getElementById('message');
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            messageDiv.textContent = 'Đang xử lý...';
+            messageDiv.className = '';
+
+            const formData = new FormData(form);
+            // Password is automatically in FormData because of the input name="password"
+
+            try {
+                const response = await fetch('/api/upload', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+                    messageDiv.textContent = text;
+                    messageDiv.className = 'success';
+                    // Don't reset password for convenience, or strictly clear it?
+                    // form.reset(); 
+                } else {
+                    const text = await response.text();
+                    messageDiv.textContent = 'Lỗi: ' + text;
+                    messageDiv.className = 'error';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                messageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
+                messageDiv.className = 'error';
+            }
+        });
+
+
+    </script>
+</body>
+
+</html>
