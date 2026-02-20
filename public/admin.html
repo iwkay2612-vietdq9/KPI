@@ -166,11 +166,17 @@
 
         // Lấy nội dung hiện tại
         fetch('/api/chuongtrinh')
-            .then(res => res.text())
+            .then(res => {
+                if (!res.ok) throw new Error('API not available yet');
+                return res.text();
+            })
             .then(text => {
                 ctText.value = text;
             })
-            .catch(err => console.error("Error loading text:", err));
+            .catch(err => {
+                console.error("Error loading text:", err);
+                // ctText.value = ''; // Giữ trống nếu có lỗi
+            });
 
         ctForm.addEventListener('submit', async (e) => {
             e.preventDefault();
