@@ -24,9 +24,7 @@ app.use(express.static('public'));
 
 // API to get Excel data
 app.get('/api/data', (req, res) => {
-    const dataDir = process.env.DATA_DIR || __dirname;
-    const filePath = path.join(dataDir, 'filetiendo.xlsx');
-    console.log("Using data file at:", filePath);
+    const filePath = path.join(__dirname, 'filetiendo.xlsx');
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'Data file not found' });
@@ -60,8 +58,7 @@ app.get('/api/data', (req, res) => {
 
 // API to get Cước sheet data
 app.get('/api/cuoc', (req, res) => {
-    const dataDir = process.env.DATA_DIR || __dirname;
-    const filePath = path.join(dataDir, 'filetiendo.xlsx');
+    const filePath = path.join(__dirname, 'filetiendo.xlsx');
 
     if (!fs.existsSync(filePath)) {
         return res.status(404).json({ error: 'Data file not found' });
@@ -101,9 +98,8 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             return res.status(400).send('Chưa chọn file.');
         }
 
-        const dataDir = process.env.DATA_DIR || __dirname;
-        const uploadedFilePath = path.join(__dirname, 'uploaded_data.xlsx'); // Upload stays in temp/root
-        const targetFilePath = path.join(dataDir, 'filetiendo.xlsx');
+        const uploadedFilePath = path.join(__dirname, 'uploaded_data.xlsx');
+        const targetFilePath = path.join(__dirname, 'filetiendo.xlsx');
         console.log("Uploaded File Path:", uploadedFilePath);
         console.log("Target File Path:", targetFilePath);
 
@@ -132,15 +128,8 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             targetWorkbook = xlsx.utils.book_new();
         }
 
-        // 3. Update/Add sheet based on filename
-        const originalName = req.file.originalname.toLowerCase();
-        let targetSheetName = "gboc"; // Default
-
-        if (originalName.includes("cuoc")) {
-            targetSheetName = "cuoc";
-        }
-
-        console.log(`Uploaded file '${req.file.originalname}' -> Updating sheet '${targetSheetName}'`);
+        // 3. Update/Add "gboc" sheet
+        const targetSheetName = "gboc";
 
         console.log("Sheets before update:", targetWorkbook.SheetNames);
 
@@ -167,7 +156,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         xlsx.writeFile(targetWorkbook, targetFilePath);
         console.log("Write complete.");
 
-        res.send(`Cập nhật dữ liệu thành công vào tab "${targetSheetName}"!`);
+        res.send('Cập nhật dữ liệu thành công vào tab "gboc"!');
 
     } catch (err) {
         console.error("Server Error:", err);
