@@ -410,6 +410,10 @@
                         diemDat = item.pct * std;
                     }
 
+                    if (item.name.toLowerCase().includes('rời mạng') && item.pct < 0) {
+                        diemDat = 0;
+                    }
+
                     if (diemDat > max) diemDat = max;
 
                     // Thiếu
