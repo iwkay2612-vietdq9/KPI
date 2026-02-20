@@ -106,16 +106,22 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         // 1. Read the uploaded file
         console.log("Reading uploaded file...");
         const uploadedWorkbook = xlsx.readFile(uploadedFilePath);
+
+        // Find the "gboc" source sheet (we'll assume the first sheet is gboc or specifically look for it)
+        // Since we don't know the exact sheet name the user uploads for gboc, we used [0] before.
         const sourceSheetName = uploadedWorkbook.SheetNames[0];
-        console.log("Source Sheet Name:", sourceSheetName);
+        console.log("Source Sheet (gboc) Name:", sourceSheetName);
         const sourceSheet = uploadedWorkbook.Sheets[sourceSheetName];
 
-        // Debug: Check a cell in source to verify content
-        try {
-            const ref = sourceSheet['!ref'];
-            console.log("Source Sheet Range:", ref);
-        } catch (e) {
-            console.log("Could not read source sheet range");
+        // Find the "cuoc" source sheet
+        let sourceCuocSheetName = uploadedWorkbook.SheetNames.find(n => n.toLowerCase() === 'cuoc' || n.toLowerCase() === 'cước');
+        // If not found by name, maybe it's the second sheet? We'll rely on name.
+        let sourceCuocSheet = null;
+        if (sourceCuocSheetName) {
+            console.log("Found Source Cuoc Sheet:", sourceCuocSheetName);
+            sourceCuocSheet = uploadedWorkbook.Sheets[sourceCuocSheetName];
+        } else {
+            console.log("No Cuoc sheet found in uploaded file.");
         }
 
         // 2. Read or Create Target Query (filetiendo.xlsx)
@@ -137,17 +143,29 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         let sheetIndex = targetWorkbook.SheetNames.indexOf(targetSheetName);
         if (sheetIndex > -1) {
             console.log(`Sheet '${targetSheetName}' found at index ${sheetIndex}. Removing...`);
-            // Remove from SheetNames
             targetWorkbook.SheetNames.splice(sheetIndex, 1);
-            // Remove from Sheets object
             delete targetWorkbook.Sheets[targetSheetName];
         } else {
             console.log(`Sheet '${targetSheetName}' not found.`);
         }
 
-        // Append new sheet
+        // Append new gboc sheet
         console.log(`Appending new '${targetSheetName}' sheet...`);
         xlsx.utils.book_append_sheet(targetWorkbook, sourceSheet, targetSheetName);
+
+        // Update/Add "cuoc" sheet if it exists in the uploaded file
+        if (sourceCuocSheet) {
+            const targetCuocSheetName = "cuoc";
+            let cuocSheetIndex = targetWorkbook.SheetNames.findIndex(n => n.toLowerCase() === 'cuoc');
+            if (cuocSheetIndex > -1) {
+                console.log(`Sheet 'cuoc' found at index ${cuocSheetIndex}. Removing...`);
+                const nameToRemove = targetWorkbook.SheetNames[cuocSheetIndex];
+                targetWorkbook.SheetNames.splice(cuocSheetIndex, 1);
+                delete targetWorkbook.Sheets[nameToRemove];
+            }
+            console.log(`Appending new '${targetCuocSheetName}' sheet...`);
+            xlsx.utils.book_append_sheet(targetWorkbook, sourceCuocSheet, targetCuocSheetName);
+        }
 
         console.log("Sheets after update:", targetWorkbook.SheetNames);
 
@@ -156,7 +174,11 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         xlsx.writeFile(targetWorkbook, targetFilePath);
         console.log("Write complete.");
 
-        res.send('Cập nhật dữ liệu thành công vào tab "gboc"!');
+        if (sourceCuocSheet) {
+            res.send('Cập nhật dữ liệu thành công vào tab "gboc" và "cuoc"!');
+        } else {
+            res.send('Cập nhật dữ liệu thành công vào tab "gboc" (Không có tab Cước)!');
+        }
 
     } catch (err) {
         console.error("Server Error:", err);
