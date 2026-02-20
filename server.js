@@ -150,6 +150,16 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             console.log("No Cuoc sheet found in uploaded file.");
         }
 
+        // Find the "tiến độ" source sheet
+        let sourceTiendoSheetName = uploadedWorkbook.SheetNames.find(n => n.toLowerCase() === 'tiến độ' || n.toLowerCase() === 'tiendo');
+        let sourceTiendoSheet = null;
+        if (sourceTiendoSheetName) {
+            console.log("Found Source Tien Do Sheet:", sourceTiendoSheetName);
+            sourceTiendoSheet = uploadedWorkbook.Sheets[sourceTiendoSheetName];
+        } else {
+            console.log("No Tien do sheet found in uploaded file.");
+        }
+
         // 2. Read or Create Target Query (filetiendo.xlsx)
         let targetWorkbook;
         if (fs.existsSync(targetFilePath)) {
@@ -193,6 +203,20 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             xlsx.utils.book_append_sheet(targetWorkbook, sourceCuocSheet, targetCuocSheetName);
         }
 
+        // Update/Add "tiến độ" sheet if it exists in the uploaded file
+        if (sourceTiendoSheet) {
+            const targetTiendoSheetName = "tiến độ";
+            let tiendoSheetIndex = targetWorkbook.SheetNames.findIndex(n => n.toLowerCase() === 'tiến độ');
+            if (tiendoSheetIndex > -1) {
+                console.log(`Sheet 'tiến độ' found at index ${tiendoSheetIndex}. Removing...`);
+                const nameToRemove = targetWorkbook.SheetNames[tiendoSheetIndex];
+                targetWorkbook.SheetNames.splice(tiendoSheetIndex, 1);
+                delete targetWorkbook.Sheets[nameToRemove];
+            }
+            console.log(`Appending new '${targetTiendoSheetName}' sheet...`);
+            xlsx.utils.book_append_sheet(targetWorkbook, sourceTiendoSheet, targetTiendoSheetName);
+        }
+
         console.log("Sheets after update:", targetWorkbook.SheetNames);
 
         // 4. Save
@@ -229,11 +253,11 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             runGitPush(fallbackCommand);
         }
 
-        if (sourceCuocSheet) {
-            res.send('Cập nhật dữ liệu thành công vào tab "gboc" và "cuoc"!\nHệ thống đang tự động đồng bộ dữ liệu lên GitHub trong nền...');
-        } else {
-            res.send('Cập nhật dữ liệu thành công vào tab "gboc" (Không có tab Cước)!\nHệ thống đang tự động đồng bộ dữ liệu lên GitHub trong nền...');
-        }
+        let updatedSheets = ['"gboc"'];
+        if (sourceCuocSheet) updatedSheets.push('"cuoc"');
+        if (sourceTiendoSheet) updatedSheets.push('"tiến độ"');
+
+        res.send(`Cập nhật dữ liệu thành công vào các tab: ${updatedSheets.join(', ')}!\nHệ thống đang tự động đồng bộ dữ liệu lên GitHub trong nền...`);
 
     } catch (err) {
         console.error("Server Error:", err);
