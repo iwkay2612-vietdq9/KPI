@@ -23,7 +23,7 @@
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
             text-align: center;
         }
 
@@ -101,6 +101,25 @@
             <button type="submit">Cập nhật dữ liệu</button>
         </form>
         <div id="message"></div>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h1>Chương Trình Kích Thích Kênh</h1>
+        <form id="chuongTrinhForm">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="ct_password" style="display:block; margin-bottom:5px;">Mật khẩu Admin:</label>
+                <input type="password" id="ct_password" name="password" required
+                    style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="ct_text" style="display:block; margin-bottom:5px;">Nội dung chương trình:</label>
+                <textarea id="ct_text" name="text" rows="8"
+                    style="width:100%; padding:8px; box-sizing:border-box; font-family: inherit; resize: vertical;"></textarea>
+            </div>
+            <button type="submit">Lưu Nội Dung Chương Trình</button>
+        </form>
+        <div id="ct_message" style="margin-top: 15px; font-size: 14px;"></div>
+
         <a href="/" class="back-link">← Quay lại trang chủ</a>
     </div>
 
@@ -137,6 +156,52 @@
                 console.error('Error:', error);
                 messageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
                 messageDiv.className = 'error';
+            }
+        });
+
+        // Đoạn code cho form Chương Trình Kích Thích Kênh
+        const ctText = document.getElementById('ct_text');
+        const ctForm = document.getElementById('chuongTrinhForm');
+        const ctMessageDiv = document.getElementById('ct_message');
+
+        // Lấy nội dung hiện tại
+        fetch('/api/chuongtrinh')
+            .then(res => res.text())
+            .then(text => {
+                ctText.value = text;
+            })
+            .catch(err => console.error("Error loading text:", err));
+
+        ctForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            ctMessageDiv.textContent = 'Đang lưu...';
+            ctMessageDiv.className = '';
+
+            const formData = new FormData(ctForm);
+            const data = new URLSearchParams(formData);
+
+            try {
+                const response = await fetch('/api/admin/chuongtrinh', {
+                    method: 'POST',
+                    body: data,
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    }
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+                    ctMessageDiv.textContent = text;
+                    ctMessageDiv.className = 'success';
+                } else {
+                    const text = await response.text();
+                    ctMessageDiv.textContent = 'Lỗi: ' + text;
+                    ctMessageDiv.className = 'error';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                ctMessageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
+                ctMessageDiv.className = 'error';
             }
         });
 

@@ -23,6 +23,10 @@ const upload = multer({ storage: storage });
 // Serve static files from 'public' directory
 app.use(express.static('public'));
 
+// Parse JSON and URL-encoded bodies for form submits
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 // API to get Excel data
 app.get('/api/data', (req, res) => {
     const filePath = path.join(__dirname, 'filetiendo.xlsx');
@@ -106,6 +110,32 @@ app.get('/api/tiendo', (req, res) => {
     } catch (error) {
         console.error("Error reading excel file:", error);
         res.status(500).json({ error: 'Failed to read data file' });
+    }
+});
+
+// API to get stimulus program text
+app.get('/api/chuongtrinh', (req, res) => {
+    const filePath = path.join(__dirname, 'chuongtrinh.txt');
+    if (fs.existsSync(filePath)) {
+        res.sendFile(filePath);
+    } else {
+        res.send('');
+    }
+});
+
+// API to update stimulus program text
+app.post('/api/admin/chuongtrinh', (req, res) => {
+    if (req.body.password !== "admin123") {
+        return res.status(401).send('Sai mật khẩu!');
+    }
+    const text = req.body.text || '';
+    const filePath = path.join(__dirname, 'chuongtrinh.txt');
+    try {
+        fs.writeFileSync(filePath, text);
+        res.send('Cập nhật chương trình kích thích kênh thành công!');
+    } catch (err) {
+        console.error("Error writing text file:", err);
+        res.status(500).send('Lỗi ghi file: ' + err.message);
     }
 });
 
