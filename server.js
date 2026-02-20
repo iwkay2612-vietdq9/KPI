@@ -56,6 +56,33 @@ app.get('/api/data', (req, res) => {
     }
 });
 
+// API to get Cước sheet data
+app.get('/api/cuoc', (req, res) => {
+    const filePath = path.join(__dirname, 'filetiendo.xlsx');
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Data file not found' });
+    }
+
+    try {
+        const workbook = xlsx.readFile(filePath);
+        // Look for "cuoc" sheet (case insensitive?)
+        // The list_dir showed "cuoc".
+        const sheetName = workbook.SheetNames.find(n => n.toLowerCase() === 'cuoc');
+
+        if (!sheetName) {
+            return res.status(404).json({ error: 'Sheet "cuoc" not found' });
+        }
+
+        const worksheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(worksheet, { header: 1 });
+        res.json(data);
+    } catch (error) {
+        console.error("Error reading excel file:", error);
+        res.status(500).json({ error: 'Failed to read data file' });
+    }
+});
+
 // API to upload and import data
 app.post('/api/upload', upload.single('file'), (req, res) => {
     try {

@@ -165,6 +165,23 @@
                     </tr>
                 </tfoot>
             </table>
+            </table>
+        </div>
+
+        <div id="cuocArea" style="display:none; margin-top: 20px;">
+            <h3>Chi tiết Cước</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="header-name" style="width: 40%;">Chỉ tiêu</th>
+                        <th class="header-name" style="width: 20%;">% Hoàn thành Tiền</th>
+                        <th class="header-name" style="width: 40%;">Thiếu để đạt</th>
+                    </tr>
+                </thead>
+                <tbody id="cuocBody">
+                    <!-- Javascript will populate this -->
+                </tbody>
+            </table>
         </div>
     </div>
 
@@ -203,13 +220,22 @@
 
         async function initialize() {
             try {
-                const response = await fetch('/api/data');
-                // ... (rest of fetch logic same as before, see processData) ...       
-                if (!response.ok) throw new Error('Failed');
-                const json = await response.json();
+                // Fetch both data in parallel
+                const [respData, respCuoc] = await Promise.all([
+                    fetch('/api/data'),
+                    fetch('/api/cuoc')
+                ]);
+
+                if (respCuoc.ok) {
+                    cuocData = await respCuoc.json();
+                }
+
+                if (!respData.ok) throw new Error('Failed');
+                const json = await respData.json();
                 processData(json);
             } catch (err) {
-                document.getElementById('status').textContent = 'Lỗi kết nối.';
+                console.error(err);
+                document.getElementById('status').textContent = 'Lỗi kết nối. Vui lòng kiểm tra Server.';
             }
         }
 
@@ -403,6 +429,126 @@
             });
 
             document.getElementById('totalScore').textContent = totalScore.toFixed(2);
+
+            // Render Cước Section
+            renderCuoc(row[0]);
+        }
+
+        let cuocData = [];
+        async function fetchCuocData() {
+            try {
+                const res = await fetch('/api/cuoc');
+                if (res.ok) {
+                    cuocData = await res.json();
+                }
+            } catch (e) {
+                console.error("Failed to fetch Cuoc data", e);
+            }
+        }
+
+        // Helper to normalize name to code (e.g. Lê Thanh Sang -> SANGLT)
+        function getEmployeeCode(fullName) {
+            if (!fullName) return "";
+            // Remove extra spaces
+            fullName = fullName.trim();
+            // Remove accents
+            const normalized = fullName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            const parts = normalized.split(/\s+/);
+            if (parts.length === 0) return "";
+
+            // Last part is First Name
+            const firstName = parts[parts.length - 1];
+            // Other parts are Last/Middle names
+            let code = firstName;
+            for (let i = 0; i < parts.length - 1; i++) {
+                code += parts[i][0];
+            }
+            return code.toUpperCase();
+        }
+
+        function renderCuoc(employeeName) {
+            const container = document.getElementById('cuocArea');
+            const tbody = document.getElementById('cuocBody');
+            tbody.innerHTML = '';
+
+            if (!cuocData || cuocData.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const code = getEmployeeCode(employeeName);
+            // Search in Cuoc Data (assuming Row 1 is code)
+            let foundRow = null;
+
+            // Data usually has header rows. Ex: Row 6 (Index 5) is first data row?
+            // From debug: 
+            // Header at Index 4. Data starts Index 5.
+            // Row[1] is Employee Code.
+
+            for (let i = 5; i < cuocData.length; i++) {
+                const row = cuocData[i];
+                if (!row) continue;
+                const rowCode = row[1]; // Col 1 is Code
+                if (rowCode && typeof rowCode === 'string') {
+                    // Check if rowCode starts with our generated code
+                    // e.g. SANGLT matches SANGLT_LDG_CNKD
+                    if (rowCode.startsWith(code + '_') || rowCode === code) {
+                        foundRow = row;
+                        break;
+                    }
+                    // Handle PHUONGNTT vs PHUONGNTT1 case? 
+                    // Let's assume startsWith covers it if code is PHUONGNTT
+                }
+            }
+
+            if (foundRow) {
+                container.style.display = 'block';
+                // Indexes from debug:
+                // 14: % Hoàn thành Tiền
+                // 15: Thiếu để đạt
+
+                const pct = parseFloat(foundRow[14]) || 0;
+                const thieu = parseFloat(foundRow[15]) || 0;
+
+                const tr = document.createElement('tr');
+
+                // Styling based on Image
+                // Header colors? We use existing table classes.
+                // Cells:
+                // % Hoàn thành: Just number? Image shows 78.72
+                // Thiếu: Currency format. Background Color?
+                // Image: Green/Yellow/Red background for "Thiếu". 
+                // Logic? 
+                // Maybe: < 0 (Overachieved) -> Green? 
+                // Wait, Image shows positive numbers with colors.
+                // 13M -> Green. 33M -> Yellow. 50M -> Orange. 75M -> Red.
+                // It seems higher missing = redder.
+                // Arbitrary visualization. Let's just use Yellow for now or Green for low missing?
+                // Or just display value.
+
+                /*
+                Structure:
+                Single Row Table?
+                Headers: "% Hoàn thành Tiền", "Thiếu để đạt (VNĐ)"
+                Values: ...
+                */
+
+                let thieuFormatted = thieu.toLocaleString('vi-VN', { maximumFractionDigits: 0 });
+                let thieuClass = "";
+                if (thieu > 50000000) thieuClass = "bg-red";
+                else if (thieu > 20000000) thieuClass = "bg-yellow";
+                else thieuClass = "bg-green";
+
+                tr.innerHTML = `
+                    <td style="text-align: left; font-weight: bold;">Kết quả Cước</td>
+                    <td style="font-weight: bold;">${pct.toFixed(2)}%</td>
+                    <td class="${thieuClass}" style="font-weight: bold; text-align: right; padding-right: 10px;">${thieuFormatted}</td>
+               `;
+                tbody.appendChild(tr);
+            } else {
+                container.style.display = 'none';
+                // Or display "No data found for [Code]"
+            }
         }
     </script>
 </body>
