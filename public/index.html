@@ -505,12 +505,16 @@
                 if (rowCode && typeof rowCode === 'string') {
                     // Check if rowCode starts with our generated code
                     // e.g. SANGLT matches SANGLT_LDG_CNKD
-                    if (rowCode.startsWith(code + '_') || rowCode === code) {
+                    // We also need to handle cases where there is a trailing number in the name
+                    // like HUNGTV1 or PHUONGNTT1 matching HUNGTV or PHUONGNTT.
+                    // The format is usually CODE + optional number + _ + ...
+                    // Let's extract the prefix before '_'
+                    const prefix = rowCode.split('_')[0];
+
+                    if (rowCode.startsWith(code + '_') || rowCode === code || prefix.startsWith(code) && prefix.replace(code, '').match(/^\d*$/)) {
                         foundRow = row;
                         break;
                     }
-                    // Handle PHUONGNTT vs PHUONGNTT1 case? 
-                    // Let's assume startsWith covers it if code is PHUONGNTT
                 }
             }
 
