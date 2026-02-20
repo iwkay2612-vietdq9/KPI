@@ -3,6 +3,7 @@ const xlsx = require('xlsx');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { exec } = require('child_process');
 
 const app = express();
 const port = 3000;
@@ -174,10 +175,43 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         xlsx.writeFile(targetWorkbook, targetFilePath);
         console.log("Write complete.");
 
-        if (sourceCuocSheet) {
-            res.send('Cập nhật dữ liệu thành công vào tab "gboc" và "cuoc"!');
+        // 5. Tự động push lên GitHub
+        console.log("Bắt đầu tự động push lên GitHub...");
+
+        // Cần cài đặt biến môi trường GITHUB_TOKEN và REPO_URL trên Render
+        // REPO_URL có định dạng: github.com/username/repo.git (không có https:// ở đầu)
+        const githubToken = process.env.GITHUB_TOKEN;
+        const repoUrl = process.env.REPO_URL;
+
+        const pushCommand = 'git add filetiendo.xlsx uploaded_data.xlsx && git commit -m "Auto update Excel data tu Admin" && git push';
+
+        const runGitPush = (cmd) => {
+            exec(`git config user.email "bot@admin.com" && git config user.name "Admin Bot" && ${cmd}`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Auto-push error: ${error.message}`);
+                } else {
+                    console.log(`Auto-push thanh cong! stdout: ${stdout}`);
+                }
+            });
+        };
+
+        if (githubToken && repoUrl) {
+            exec(`git remote set-url origin https://${githubToken}@${repoUrl}`, (err) => {
+                if (!err) {
+                    runGitPush(pushCommand);
+                } else {
+                    console.error("Loi set remote URL:", err);
+                    runGitPush(pushCommand); // Thử push mặc định nếu lỗi
+                }
+            });
         } else {
-            res.send('Cập nhật dữ liệu thành công vào tab "gboc" (Không có tab Cước)!');
+            runGitPush(pushCommand);
+        }
+
+        if (sourceCuocSheet) {
+            res.send('Cập nhật dữ liệu thành công vào tab "gboc" và "cuoc"!\nHệ thống đang tự động đồng bộ dữ liệu lên GitHub trong nền...');
+        } else {
+            res.send('Cập nhật dữ liệu thành công vào tab "gboc" (Không có tab Cước)!\nHệ thống đang tự động đồng bộ dữ liệu lên GitHub trong nền...');
         }
 
     } catch (err) {
