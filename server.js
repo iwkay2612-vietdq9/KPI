@@ -132,8 +132,15 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             targetWorkbook = xlsx.utils.book_new();
         }
 
-        // 3. Update/Add "gboc" sheet
-        const targetSheetName = "gboc";
+        // 3. Update/Add sheet based on filename
+        const originalName = req.file.originalname.toLowerCase();
+        let targetSheetName = "gboc"; // Default
+
+        if (originalName.includes("cuoc")) {
+            targetSheetName = "cuoc";
+        }
+
+        console.log(`Uploaded file '${req.file.originalname}' -> Updating sheet '${targetSheetName}'`);
 
         console.log("Sheets before update:", targetWorkbook.SheetNames);
 
@@ -160,7 +167,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         xlsx.writeFile(targetWorkbook, targetFilePath);
         console.log("Write complete.");
 
-        res.send('Cập nhật dữ liệu thành công vào tab "gboc"!');
+        res.send(`Cập nhật dữ liệu thành công vào tab "${targetSheetName}"!`);
 
     } catch (err) {
         console.error("Server Error:", err);
