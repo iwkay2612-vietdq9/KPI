@@ -183,29 +183,25 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         const githubToken = process.env.GITHUB_TOKEN;
         const repoUrl = process.env.REPO_URL;
 
-        const pushCommand = 'git add filetiendo.xlsx uploaded_data.xlsx && git commit -m "Auto update Excel data tu Admin" && git push';
-
         const runGitPush = (cmd) => {
             exec(`git config user.email "bot@admin.com" && git config user.name "Admin Bot" && ${cmd}`, (error, stdout, stderr) => {
                 if (error) {
-                    console.error(`Auto-push error: ${error.message}`);
+                    console.error(`Auto-push error log: ${error.message}`);
+                    if (stderr) console.error(`stderr: ${stderr}`);
                 } else {
-                    console.log(`Auto-push thanh cong! stdout: ${stdout}`);
+                    console.log(`Auto-push thành công! stdout: ${stdout}`);
                 }
             });
         };
 
         if (githubToken && repoUrl) {
-            exec(`git remote set-url origin https://${githubToken}@${repoUrl}`, (err) => {
-                if (!err) {
-                    runGitPush(pushCommand);
-                } else {
-                    console.error("Loi set remote URL:", err);
-                    runGitPush(pushCommand); // Thử push mặc định nếu lỗi
-                }
-            });
-        } else {
+            // Push trực tiếp qua URL chứa token, bỏ qua 'origin'
+            const pushCommand = `git add filetiendo.xlsx && git commit -m "Auto update Excel data tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
             runGitPush(pushCommand);
+        } else {
+            console.log("Thiếu GITHUB_TOKEN hoặc REPO_URL. Thử commit local và push mặc định...");
+            const fallbackCommand = `git add filetiendo.xlsx && git commit -m "Auto update Excel data tu Admin" && git push`;
+            runGitPush(fallbackCommand);
         }
 
         if (sourceCuocSheet) {
