@@ -464,8 +464,8 @@
             if (!fullName) return "";
             // Remove extra spaces
             fullName = fullName.trim();
-            // Remove accents
-            const normalized = fullName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            // Replace Đ/đ and Remove accents
+            const normalized = fullName.replace(/Đ/g, "D").replace(/đ/g, "d").normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             const parts = normalized.split(/\s+/);
             if (parts.length === 0) return "";
 
