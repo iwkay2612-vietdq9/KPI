@@ -84,6 +84,31 @@ app.get('/api/cuoc', (req, res) => {
     }
 });
 
+// API to get Tiến độ sheet data
+app.get('/api/tiendo', (req, res) => {
+    const filePath = path.join(__dirname, 'filetiendo.xlsx');
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Data file not found' });
+    }
+
+    try {
+        const workbook = xlsx.readFile(filePath);
+        const sheetName = workbook.SheetNames.find(n => n.toLowerCase() === 'tiến độ');
+
+        if (!sheetName) {
+            return res.status(404).json({ error: 'Sheet "tiến độ" not found' });
+        }
+
+        const worksheet = workbook.Sheets[sheetName];
+        const data = xlsx.utils.sheet_to_json(worksheet, { header: 1, defval: '' });
+        res.json(data);
+    } catch (error) {
+        console.error("Error reading excel file:", error);
+        res.status(500).json({ error: 'Failed to read data file' });
+    }
+});
+
 // API to upload and import data
 app.post('/api/upload', upload.single('file'), (req, res) => {
     try {

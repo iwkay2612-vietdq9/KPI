@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tiến độ chung</title>
+    <style>
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            width: 100%;
+            overflow-x: auto;
+            background: white;
+            padding: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #0070C0;
+            text-transform: uppercase;
+        }
+
+        table {
+            border-collapse: collapse;
+            white-space: nowrap;
+            font-size: 13px;
+            width: max-content;
+        }
+
+        th,
+        td {
+            border: 1px solid #000;
+            padding: 5px 8px;
+            text-align: center;
+            vertical-align: middle;
+        }
+
+        thead th {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        .header-row-0 th,
+        .header-row-1 th {
+            font-weight: bold;
+            color: black;
+        }
+
+        .cat-codinh {
+            background-color: #0070C0;
+            color: white;
+        }
+
+        .cat-didong {
+            background-color: #00B050;
+            color: white;
+        }
+
+        .cat-cuoc {
+            background-color: #92D050;
+        }
+
+        .cat-chuongtrinh {
+            background-color: #0070C0;
+            color: white;
+        }
+
+        .sub-header {
+            background-color: #FFC000;
+        }
+
+        .header-row-2 th {
+            background-color: #E7E6E6;
+            font-weight: bold;
+        }
+
+        .bg-red {
+            background-color: #FF0000 !important;
+            color: white;
+            font-weight: bold;
+        }
+
+        .bg-green {
+            background-color: #92D050 !important;
+            font-weight: bold;
+        }
+
+        .bg-yellow-light {
+            background-color: #FFE699;
+        }
+
+        .text-red {
+            color: #FF0000;
+            font-weight: bold;
+        }
+
+        .text-blue {
+            color: #0070C0;
+            font-weight: bold;
+        }
+
+        .row-vietdq9 .fixed-bg {
+            background-color: #FFFF00;
+        }
+
+        .row-sontv10 .fixed-bg {
+            background-color: #BDD7EE;
+        }
+
+        .sticky-col-1 {
+            position: sticky;
+            left: 0;
+            z-index: 5;
+            background-color: #fff;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        thead .sticky-col-1 {
+            z-index: 20;
+            background-color: transparent;
+            /* Keep original header row background */
+        }
+
+        .row-vietdq9 .sticky-col-1 {
+            background-color: #FFFF00;
+        }
+
+        .row-sontv10 .sticky-col-1 {
+            background-color: #BDD7EE;
+        }
+
+        .back-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            text-decoration: none;
+            padding: 8px 15px;
+            background: #0070C0;
+            color: white;
+            border-radius: 5px;
+            font-weight: bold;
+            border: 1px solid #000;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <a href="index.html" class="back-link">⬅ Quay lại Bảng Cá Nhân</a>
+        <h1>TIẾN ĐỘ CHUNG</h1>
+        <div id="status">Đang tải dữ liệu...</div>
+        <table id="tiendoTable" style="display:none;">
+            <thead id="tableHead"></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const res = await fetch('/api/tiendo');
+                if (!res.ok) throw new Error('Network error');
+                const data = await res.json();
+                renderTable(data);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('status').textContent = 'Lỗi kết nối. Không thể tải dữ liệu.';
+            }
+        });
+
+        function renderTable(data) {
+            if (!data || data.length < 3) {
+                document.getElementById('status').textContent = 'Dữ liệu không hợp lệ.';
+                return;
+            }
+            document.getElementById('status').style.display = 'none';
+            document.getElementById('tiendoTable').style.display = 'table';
+
+            const thead = document.getElementById('tableHead');
+            const tbody = document.getElementById('tableBody');
+
+            let maxCols = 0;
+            data.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+
+            for (let i = 0; i < 3; i++) {
+                const tr = document.createElement('tr');
+                tr.className = 'header-row-' + i;
+                const rowData = data[i];
+
+                for (let c = 0; c < maxCols; c++) {
+                    const cellValue = rowData[c] || "";
+                    if (i < 2 && cellValue !== "") {
+                        let colspan = 1;
+                        while (c + colspan < maxCols && (rowData[c + colspan] === "" || rowData[c + colspan] === undefined)) {
+                            colspan++;
+                        }
+                        const th = document.createElement('th');
+                        th.colSpan = colspan;
+                        th.textContent = cellValue;
+
+                        if (i === 0) {
+                            const valLower = cellValue.toLowerCase();
+                            if (valLower.includes('cố định')) th.className = 'cat-codinh';
+                            else if (valLower.includes('di động')) th.className = 'cat-didong';
+                            else if (valLower.includes('cước')) th.className = 'cat-cuoc';
+                            else if (valLower.includes('trọng điểm')) th.className = 'cat-chuongtrinh';
+                            else th.style.backgroundColor = '#ccc';
+                        } else if (i === 1) {
+                            th.className = 'sub-header';
+                        }
+
+                        if (c === 0) th.classList.add('sticky-col-1');
+                        tr.appendChild(th);
+                        c += colspan - 1;
+                    } else if (i === 2 || cellValue !== "") {
+                        const th = document.createElement('th');
+                        th.textContent = cellValue;
+                        if (c === 0) th.classList.add('sticky-col-1');
+                        tr.appendChild(th);
+                    } else {
+                        const th = document.createElement('th');
+                        if (c === 0) th.classList.add('sticky-col-1');
+                        tr.appendChild(th);
+                    }
+                }
+                thead.appendChild(tr);
+            }
+
+            for (let i = 3; i < data.length; i++) {
+                const rowData = data[i];
+                if (!rowData || rowData.length === 0 || rowData.every(c => c === "" || c == null)) continue;
+
+                // Dừng render nếu gặp phần cấu hình/mapping phụ ở cuối file Excel
+                if (rowData[0] && rowData[0].toString().includes('TB FTTH phát triển mới')) {
+                    break;
+                }
+
+                const tr = document.createElement('tr');
+
+                let rowClass = '';
+                const nvQuanLy = (rowData[2] || "").toString().toUpperCase();
+                if (nvQuanLy.includes('VIETDQ9')) rowClass = 'row-vietdq9';
+                else if (nvQuanLy.includes('SONTV10')) rowClass = 'row-sontv10';
+
+                // red separator row handling
+                if (!rowData[0] && !rowData[1] && !rowData[2]) {
+                    if (rowData.some(cell => cell !== "")) {
+                        // it has some data but first 3 columns empty
+                    } else {
+                        // completely empty row but in the middle? Give it a red background separator maybe
+                        tr.style.backgroundColor = '#C00000';
+                        tr.style.height = '10px';
+                    }
+                }
+
+                tr.className = rowClass;
+
+                for (let c = 0; c < maxCols; c++) {
+                    const td = document.createElement('td');
+                    if (c === 0) td.classList.add('sticky-col-1');
+                    let val = rowData[c];
+                    if (val === undefined || val === null) val = "";
+
+                    let textVal = val;
+                    if (typeof val === 'number') {
+                        const thVal = data[2][c] || "";
+                        if (thVal === '%' || thVal.toLowerCase().includes('đạt') || thVal.toLowerCase().includes('%')) {
+                            textVal = (val * 100).toFixed(0) + '%';
+                            if (val < 1) td.className = 'bg-red';
+                            else if (val >= 1) td.className = 'bg-green';
+                        } else if (val >= 1000 || (typeof rowData[0] === 'string' && rowData[0].includes('_NVKD') && c > 0)) {
+                            // Format as money/large number with thousand separators
+                            textVal = val.toLocaleString('vi-VN', { maximumFractionDigits: 2 });
+                        } else if (thVal.toLowerCase() === 'thiếu' && val > 0) {
+                            td.classList.add('text-red');
+                            // Add yellow light background for TH/Thiếu column if possible
+                            // The image shows yellow background for TH and Thiếu but it's okay to just use text color
+                            if (!Number.isInteger(val)) textVal = val.toFixed(2);
+                        } else if (!Number.isInteger(val)) {
+                            // If it's a floating point number not marked as %, probably needs formatting
+                            textVal = val.toFixed(2);
+                        }
+                    }
+
+                    if (c < 3 && textVal !== "") td.classList.add('fixed-bg');
+
+                    if (rowData[0] && data[2][c] === 'TH') {
+                        // some soft background
+                        td.classList.add('bg-yellow-light');
+                    }
+
+                    td.textContent = textVal;
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+            }
+        }
+    </script>
+</body>
+
+</html>
