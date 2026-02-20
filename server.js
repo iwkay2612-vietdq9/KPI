@@ -129,102 +129,11 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         console.log("Uploaded File Path:", uploadedFilePath);
         console.log("Target File Path:", targetFilePath);
 
-        // 1. Read the uploaded file
-        console.log("Reading uploaded file...");
-        const uploadedWorkbook = xlsx.readFile(uploadedFilePath);
+        // 1. Dùng trực tiếp file được upload đè lên filetiendo.xlsx
+        fs.copyFileSync(uploadedFilePath, targetFilePath);
+        console.log("File copied successfully.");
 
-        // Find the "gboc" source sheet (we'll assume the first sheet is gboc or specifically look for it)
-        // Since we don't know the exact sheet name the user uploads for gboc, we used [0] before.
-        const sourceSheetName = uploadedWorkbook.SheetNames[0];
-        console.log("Source Sheet (gboc) Name:", sourceSheetName);
-        const sourceSheet = uploadedWorkbook.Sheets[sourceSheetName];
-
-        // Find the "cuoc" source sheet
-        let sourceCuocSheetName = uploadedWorkbook.SheetNames.find(n => n.toLowerCase() === 'cuoc' || n.toLowerCase() === 'cước');
-        // If not found by name, maybe it's the second sheet? We'll rely on name.
-        let sourceCuocSheet = null;
-        if (sourceCuocSheetName) {
-            console.log("Found Source Cuoc Sheet:", sourceCuocSheetName);
-            sourceCuocSheet = uploadedWorkbook.Sheets[sourceCuocSheetName];
-        } else {
-            console.log("No Cuoc sheet found in uploaded file.");
-        }
-
-        // Find the "tiến độ" source sheet
-        let sourceTiendoSheetName = uploadedWorkbook.SheetNames.find(n => n.toLowerCase() === 'tiến độ' || n.toLowerCase() === 'tiendo');
-        let sourceTiendoSheet = null;
-        if (sourceTiendoSheetName) {
-            console.log("Found Source Tien Do Sheet:", sourceTiendoSheetName);
-            sourceTiendoSheet = uploadedWorkbook.Sheets[sourceTiendoSheetName];
-        } else {
-            console.log("No Tien do sheet found in uploaded file.");
-        }
-
-        // 2. Read or Create Target Query (filetiendo.xlsx)
-        let targetWorkbook;
-        if (fs.existsSync(targetFilePath)) {
-            console.log("Target file exists. Reading...");
-            targetWorkbook = xlsx.readFile(targetFilePath);
-        } else {
-            console.log("Target file does not exist. Creating new.");
-            targetWorkbook = xlsx.utils.book_new();
-        }
-
-        // 3. Update/Add "gboc" sheet
-        const targetSheetName = "gboc";
-
-        console.log("Sheets before update:", targetWorkbook.SheetNames);
-
-        // Remove existing "gboc" if exists
-        let sheetIndex = targetWorkbook.SheetNames.indexOf(targetSheetName);
-        if (sheetIndex > -1) {
-            console.log(`Sheet '${targetSheetName}' found at index ${sheetIndex}. Removing...`);
-            targetWorkbook.SheetNames.splice(sheetIndex, 1);
-            delete targetWorkbook.Sheets[targetSheetName];
-        } else {
-            console.log(`Sheet '${targetSheetName}' not found.`);
-        }
-
-        // Append new gboc sheet
-        console.log(`Appending new '${targetSheetName}' sheet...`);
-        xlsx.utils.book_append_sheet(targetWorkbook, sourceSheet, targetSheetName);
-
-        // Update/Add "cuoc" sheet if it exists in the uploaded file
-        if (sourceCuocSheet) {
-            const targetCuocSheetName = "cuoc";
-            let cuocSheetIndex = targetWorkbook.SheetNames.findIndex(n => n.toLowerCase() === 'cuoc');
-            if (cuocSheetIndex > -1) {
-                console.log(`Sheet 'cuoc' found at index ${cuocSheetIndex}. Removing...`);
-                const nameToRemove = targetWorkbook.SheetNames[cuocSheetIndex];
-                targetWorkbook.SheetNames.splice(cuocSheetIndex, 1);
-                delete targetWorkbook.Sheets[nameToRemove];
-            }
-            console.log(`Appending new '${targetCuocSheetName}' sheet...`);
-            xlsx.utils.book_append_sheet(targetWorkbook, sourceCuocSheet, targetCuocSheetName);
-        }
-
-        // Update/Add "tiến độ" sheet if it exists in the uploaded file
-        if (sourceTiendoSheet) {
-            const targetTiendoSheetName = "tiến độ";
-            let tiendoSheetIndex = targetWorkbook.SheetNames.findIndex(n => n.toLowerCase() === 'tiến độ');
-            if (tiendoSheetIndex > -1) {
-                console.log(`Sheet 'tiến độ' found at index ${tiendoSheetIndex}. Removing...`);
-                const nameToRemove = targetWorkbook.SheetNames[tiendoSheetIndex];
-                targetWorkbook.SheetNames.splice(tiendoSheetIndex, 1);
-                delete targetWorkbook.Sheets[nameToRemove];
-            }
-            console.log(`Appending new '${targetTiendoSheetName}' sheet...`);
-            xlsx.utils.book_append_sheet(targetWorkbook, sourceTiendoSheet, targetTiendoSheetName);
-        }
-
-        console.log("Sheets after update:", targetWorkbook.SheetNames);
-
-        // 4. Save
-        console.log("Writing to file...");
-        xlsx.writeFile(targetWorkbook, targetFilePath);
-        console.log("Write complete.");
-
-        // 5. Tự động push lên GitHub
+        // 2. Tự động push lên GitHub
         console.log("Bắt đầu tự động push lên GitHub...");
 
         // Cần cài đặt biến môi trường GITHUB_TOKEN và REPO_URL trên Render
@@ -253,11 +162,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
             runGitPush(fallbackCommand);
         }
 
-        let updatedSheets = ['"gboc"'];
-        if (sourceCuocSheet) updatedSheets.push('"cuoc"');
-        if (sourceTiendoSheet) updatedSheets.push('"tiến độ"');
-
-        res.send(`Cập nhật dữ liệu thành công vào các tab: ${updatedSheets.join(', ')}!\nHệ thống đang tự động đồng bộ dữ liệu lên GitHub trong nền...`);
+        res.send(`Cập nhật toàn bộ file dữ liệu thành công!\nHệ thống đang tự động đồng bộ dữ liệu lên GitHub trong nền...`);
 
     } catch (err) {
         console.error("Server Error:", err);
