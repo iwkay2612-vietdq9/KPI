@@ -248,6 +248,130 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // Tính năng tìm node gần nhất
+    const findNearestBtn = document.getElementById('find-nearest-btn');
+    let userLocationMarker = null;
+    let nearestRoutingLine = null;
+
+    if (findNearestBtn) {
+        findNearestBtn.addEventListener('click', () => {
+            if (!navigator.geolocation) {
+                alert('Trình duyệt của bạn không hỗ trợ định vị.');
+                return;
+            }
+
+            // Hiển thị trạng thái đang tìm kiếm
+            const originalHTML = findNearestBtn.innerHTML;
+            findNearestBtn.innerHTML = '<span style="display:inline-block; width:14px; height:14px; border:2px solid; border-radius:50%; border-top-color:transparent; animation:spin 1s linear infinite;"></span> Đang tìm...';
+
+            // Xóa style animation cũ nếu có để tránh lỗi
+            if (!document.getElementById('spin-anim-style')) {
+                const style = document.createElement('style');
+                style.id = 'spin-anim-style';
+                style.innerHTML = '@keyframes spin { 100% { transform: rotate(360deg); } }';
+                document.head.appendChild(style);
+            }
+
+            navigator.geolocation.getCurrentPosition((position) => {
+                findNearestBtn.innerHTML = originalHTML;
+
+                if (nodesData.length === 0) {
+                    alert('Chưa tải xong dữ liệu trạm.');
+                    return;
+                }
+
+                const userLat = position.coords.latitude;
+                const userLon = position.coords.longitude;
+                const userLatLng = L.latLng(userLat, userLon);
+
+                // Xóa marker vị trí cũ và đường vẽ cũ (nếu có)
+                if (userLocationMarker) map.removeLayer(userLocationMarker);
+                if (nearestRoutingLine) map.removeLayer(nearestRoutingLine);
+
+                // Hiển thị vị trí người dùng bằng icon vòng tròn đơn giản
+                userLocationMarker = L.circleMarker([userLat, userLon], {
+                    radius: 8,
+                    fillColor: "#3b82f6",
+                    color: "#ffffff",
+                    weight: 2,
+                    opacity: 1,
+                    fillOpacity: 1
+                }).bindPopup("<div class='popup-title'>Vị trí của bạn</div>").addTo(map);
+
+                // Tìm node gần nhất
+                let nearestNode = null;
+                let minDistance = Infinity;
+
+                nodesData.forEach(node => {
+                    const nodeLatLng = L.latLng(node.lat, node.lon);
+                    const distance = userLatLng.distanceTo(nodeLatLng); // Tính bằng mét (Leaflet)
+                    if (distance < minDistance) {
+                        minDistance = distance;
+                        nearestNode = node;
+                    }
+                });
+
+                if (nearestNode) {
+                    // Vẽ đường nối từ người dùng đến trạm gần nhất
+                    nearestRoutingLine = L.polyline([userLatLng, [nearestNode.lat, nearestNode.lon]], {
+                        color: '#ea580c',
+                        weight: 3,
+                        dashArray: '8, 8'
+                    }).addTo(map);
+
+                    // Xử lý để always show marker (tách khỏi cluster)
+                    if (currentHighlightedMarker && currentHighlightedMarker !== nearestNode.marker) {
+                        map.removeLayer(currentHighlightedMarker);
+                        markers.addLayer(currentHighlightedMarker);
+                    }
+                    currentHighlightedMarker = nearestNode.marker;
+                    markers.removeLayer(nearestNode.marker);
+                    map.addLayer(nearestNode.marker);
+
+                    // Phóng to bản đồ để bao trọn cả 2 vị trí
+                    const bounds = L.latLngBounds([userLatLng, [nearestNode.lat, nearestNode.lon]]);
+                    map.fitBounds(bounds, { padding: [50, 50] });
+
+                    // Cập nhật popup với thông tin khoảng cách
+                    nearestNode.marker.setPopupContent(`
+                        <div class="popup-title">${nearestNode.name}</div>
+                        <div class="popup-coords" style="margin-bottom: 8px;">
+                            <div style="color: #ea580c; font-weight: bold; margin-bottom: 4px; font-size: 0.9rem;">📍 Cách bạn: ${(minDistance / 1000).toFixed(2)} km</div>
+                            <span><strong>Lat:</strong> ${nearestNode.lat.toFixed(6)}</span>
+                            <span><strong>Lon:</strong> ${nearestNode.lon.toFixed(6)}</span>
+                        </div>
+                        <button class="copy-coords-btn" onclick="copyNodeCoords('${nearestNode.lat.toFixed(6)}, ${nearestNode.lon.toFixed(6)}', this)" style="width: 100%; padding: 6px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                            Copy Tọa độ
+                        </button>
+                    `).openPopup();
+                }
+
+            }, (error) => {
+                console.error("Lỗi lấy vị trí:", error);
+                findNearestBtn.innerHTML = originalHTML;
+
+                switch (error.code) {
+                    case error.PERMISSION_DENIED:
+                        alert("Bạn đã từ chối cấp quyền truy cập vị trí. Để sử dụng tính năng này, hãy cấp quyền vị trí cho trang web.");
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        alert("Thông tin vị trí hiện không có sẵn.");
+                        break;
+                    case error.TIMEOUT:
+                        alert("Yêu cầu lấy vị trí quá thời gian chờ.");
+                        break;
+                    default:
+                        alert("Đã xảy ra lỗi không xác định khi lấy vị trí.");
+                        break;
+                }
+            }, {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 0
+            });
+        });
+    }
+
     // Bắt đầu tải KML
     loadKMLData();
 });
