@@ -222,6 +222,23 @@
                 </tbody>
             </table>
         </div>
+
+        <div id="roitiviArea" style="display:none; margin-top: 20px;">
+            <h3 style="background-color: #FFFF00; padding: 5px; border: 1px solid #000; text-transform: uppercase;">Chi
+                tiết Rời mạng Tivi</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="cuoc-header" style="background-color: #FFFF00; width: 30%;">THUE_BAO</th>
+                        <th class="cuoc-header" style="background-color: #FFFF00; width: 40%;">GOI_CUOC</th>
+                        <th class="cuoc-header" style="background-color: #FFFF00; width: 30%;">NGAY_CHAN_CHAR</th>
+                    </tr>
+                </thead>
+                <tbody id="roitiviBody">
+                    <!-- Javascript will populate this -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
@@ -230,6 +247,7 @@
         let rawData = [];
         let cuocData = [];
         let roimangData = [];
+        let roitiviData = [];
 
         // Configuration map for metrics based on Image
         // Key: Part of the metric name to match (case insensitive)
@@ -262,10 +280,11 @@
         async function initialize() {
             try {
                 // Fetch both data in parallel
-                const [respData, respCuoc, respRoimang] = await Promise.all([
+                const [respData, respCuoc, respRoimang, respRoitivi] = await Promise.all([
                     fetch('/api/data'),
                     fetch('/api/cuoc'),
-                    fetch('/api/roimang')
+                    fetch('/api/roimang'),
+                    fetch('/api/roitivi')
                 ]);
 
                 if (respCuoc.ok) {
@@ -274,6 +293,10 @@
 
                 if (respRoimang.ok) {
                     roimangData = await respRoimang.json();
+                }
+
+                if (respRoitivi.ok) {
+                    roitiviData = await respRoitivi.json();
                 }
 
                 if (!respData.ok) throw new Error('Failed');
@@ -485,6 +508,9 @@
 
             // Render Rời mạng FTTH Section
             renderRoimang(row[0]);
+
+            // Render Rời mạng Tivi Section
+            renderRoitivi(row[0]);
         }
 
         // Helper to normalize name to code (e.g. Lê Thanh Sang -> SANGLT)
