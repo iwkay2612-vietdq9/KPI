@@ -301,7 +301,10 @@ document.addEventListener('DOMContentLoaded', () => {
                     </div>
                 `).openPopup();
 
-                userLocationMarker.openPopup();
+                userLocationMarker.setPopupContent(`
+                    <div style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 4px;">Vị trí bạn tìm kiếm</div>
+                    <div class="popup-title" style="color: #ea580c; font-size: 1.1rem; margin-bottom: 0;">Trạm gần nhất: ${nearestNode.name}</div>
+                `).openPopup();
             } else {
                 map.setView([inputLat, inputLon], 16);
                 userLocationMarker.openPopup();
