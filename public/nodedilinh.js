@@ -110,10 +110,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                 // Tạo popup HTML
                                 const popupContent = `
                                     <div class="popup-title">${name}</div>
-                                    <div class="popup-coords">
+                                    <div class="popup-coords" style="margin-bottom: 8px;">
                                         <span><strong>Lat:</strong> ${lat.toFixed(6)}</span>
                                         <span><strong>Lon:</strong> ${lon.toFixed(6)}</span>
                                     </div>
+                                    <button class="copy-coords-btn" onclick="copyNodeCoords('${lat.toFixed(6)}, ${lon.toFixed(6)}', this)" style="width: 100%; padding: 6px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                                        Copy Tọa độ
+                                    </button>
                                 `;
 
                                 // Khởi tạo marker
@@ -248,3 +251,37 @@ document.addEventListener('DOMContentLoaded', () => {
     // Bắt đầu tải KML
     loadKMLData();
 });
+
+// Hàm hỗ trợ copy tọa độ
+window.copyNodeCoords = function (coords, btn) {
+    if (navigator.clipboard) {
+        navigator.clipboard.writeText(coords).then(() => {
+            const originalText = btn.innerHTML;
+            btn.innerHTML = 'Đã copy!';
+            btn.style.backgroundColor = '#10b981'; // Green
+            setTimeout(() => {
+                btn.innerHTML = originalText;
+                btn.style.backgroundColor = 'var(--accent)';
+            }, 2000);
+        }).catch(err => {
+            console.error('Lỗi copy:', err);
+            alert('Lỗi khi copy tọa độ!');
+        });
+    } else {
+        // Fallback
+        const tempInput = document.createElement('input');
+        tempInput.value = coords;
+        document.body.appendChild(tempInput);
+        tempInput.select();
+        document.execCommand('copy');
+        document.body.removeChild(tempInput);
+
+        const originalText = btn.innerHTML;
+        btn.innerHTML = 'Đã copy!';
+        btn.style.backgroundColor = '#10b981'; // Green
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.style.backgroundColor = 'var(--accent)';
+        }, 2000);
+    }
+};
