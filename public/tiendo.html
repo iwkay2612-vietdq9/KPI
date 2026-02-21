@@ -137,6 +137,26 @@
             background-color: #BDD7EE;
         }
 
+        /* Cuoc table styling */
+        #cuocTiendoTable {
+            margin-top: 30px;
+        }
+
+        #cuocTiendoTable th {
+            background-color: #92CDDC;
+            /* Light blue header */
+        }
+
+        .cuoc-n-1 {
+            background-color: #FFC000;
+            /* Yellow */
+        }
+
+        .cuoc-dau-ky {
+            background-color: #ED7D31;
+            /* Orange */
+        }
+
         .back-link {
             display: inline-block;
             margin-bottom: 20px;
@@ -160,6 +180,20 @@
             <thead id="tableHead"></thead>
             <tbody id="tableBody"></tbody>
         </table>
+
+        <!-- Bảng Cước Thu Trong Ngày Mới -->
+        <table id="cuocTiendoTable" style="display:none;">
+            <thead>
+                <tr>
+                    <th>Nhân Viên</th>
+                    <th>Đầu kỳ</th>
+                    <th>Cước ngày n-1</th>
+                    <th></th>
+                    <th>Cước thu được<br>trong ngày</th>
+                </tr>
+            </thead>
+            <tbody id="cuocTiendoBody"></tbody>
+        </table>
     </div>
 
     <script>
@@ -169,7 +203,6 @@
                     fetch('/api/tiendo'),
                     fetch('/api/cuoc')
                 ]);
-
                 if (!resTiendo.ok || !resCuoc.ok) throw new Error('Network error');
 
                 const dataTiendo = await resTiendo.json();
@@ -218,6 +251,7 @@
                 }
 
                 renderTable(dataTiendo);
+                renderCuocTiendoTable(dataCuoc);
             } catch (e) {
                 console.error(e);
                 document.getElementById('status').textContent = 'Lỗi kết nối. Không thể tải dữ liệu.';
@@ -373,7 +407,59 @@
                 tbody.appendChild(tr);
             }
         }
+
+        function renderCuocTiendoTable(data) {
+            if (!data || data.length < 5) return;
+
+            document.getElementById('cuocTiendoTable').style.display = 'table';
+            const tbody = document.getElementById('cuocTiendoBody');
+
+            // Allow list of NV to filter correctly
+            const allowedEmployees = [
+                "CNKD_LDG_TAMDT", "CNKD_LDG_ANLT", "CNKD_LDG_LINHPM", "CNKD_LDG_SANGLT",
+                "CNKD_LDG_NHUANVD", "CNKD_LDG_HIEUBT", "CNKD_LDG_PHUONGNTT1", "CNKD_LDG_HANGBT",
+                "CNKD_LDG_SANGTV", "CNKD_LDG_THUONGNTH", "CNKD_LDG_HUONGVTT"
+            ];
+
+            let count = 0;
+            // Dữ liệu cước bắt đầu từ dòng 5 (index 5) theo API
+            for (let i = 5; i < data.length; i++) {
+                const row = data[i];
+                if (!row) continue;
+
+                const nvCode = row[1]; // Mã nhân viên thường nằm ở cột 1
+                const aliasCode = row[15]; // Tên nhân viên ở cột 15 (vd: CNKD_LDG_TAMDT)
+
+                if (aliasCode && allowedEmployees.includes(aliasCode)) {
+                    const tr = document.createElement('tr');
+
+                    // Background xám nhạt xen kẽ cho cột Nhân Viên
+                    const nvBg = count % 2 === 0 ? 'background-color: white;' : 'background-color: #DDEBF7;';
+
+                    const dauKy = row[16] || 0;
+                    const cuocN1 = row[17] || 0;
+                    const blankCol = row[18] || cuocN1; // Lấy cột 17 tạm thời nếu 18 rỗng để format
+                    const cuocThu = row[19] || 0;
+
+                    // Accounting format: $ value or -$ value
+                    const formatMoney = (val) => {
+                        const absVal = Math.abs(val).toLocaleString('en-US', { maximumFractionDigits: 0 });
+                        return val < 0 ? `-$${absVal}` : `$${absVal}`;
+                    };
+
+                    tr.innerHTML = `
+                        <td style="${nvBg} text-align: left; padding-left: 10px;">${aliasCode}</td>
+                        <td class="cuoc-dau-ky" style="font-weight: bold; text-align: right;">${formatMoney(dauKy)}</td>
+                        <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(cuocN1)}</td>
+                        <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(blankCol)}</td>
+                        <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(cuocThu)}</td>
+                    `;
+                    tbody.appendChild(tr);
+                    count++;
+                }
+            }
+        }
     </script>
 </body>
 
-</html>
+</html>```
