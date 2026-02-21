@@ -114,9 +114,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                         <span><strong>Lat:</strong> ${lat.toFixed(6)}</span>
                                         <span><strong>Lon:</strong> ${lon.toFixed(6)}</span>
                                     </div>
-                                    <button class="copy-coords-btn" onclick="copyNodeCoords('${lat.toFixed(6)}, ${lon.toFixed(6)}', this)" style="width: 100%; padding: 6px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
-                                        Copy Tọa độ
-                                    </button>
+                                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                                        <button class="copy-coords-btn" onclick="copyNodeCoords('${lat.toFixed(6)}, ${lon.toFixed(6)}', this)" style="flex: 1; padding: 6px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                                            Copy TĐ
+                                        </button>
+                                        <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}', '_blank')" style="flex: 1; padding: 6px; background-color: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                                            Chỉ đường
+                                        </button>
+                                    </div>
                                 `;
 
                                 // Khởi tạo marker
@@ -340,9 +345,14 @@ document.addEventListener('DOMContentLoaded', () => {
                             <span><strong>Lat:</strong> ${nearestNode.lat.toFixed(6)}</span>
                             <span><strong>Lon:</strong> ${nearestNode.lon.toFixed(6)}</span>
                         </div>
-                        <button class="copy-coords-btn" onclick="copyNodeCoords('${nearestNode.lat.toFixed(6)}, ${nearestNode.lon.toFixed(6)}', this)" style="width: 100%; padding: 6px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
-                            Copy Tọa độ
-                        </button>
+                        <div style="display: flex; gap: 8px; margin-top: 8px;">
+                            <button class="copy-coords-btn" onclick="copyNodeCoords('${nearestNode.lat.toFixed(6)}, ${nearestNode.lon.toFixed(6)}', this)" style="flex: 1; padding: 6px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                                Copy TĐ
+                            </button>
+                            <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${nearestNode.lat},${nearestNode.lon}', '_blank')" style="flex: 1; padding: 6px; background-color: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                                Chỉ đường
+                            </button>
+                        </div>
                     `).openPopup();
                 }
 
