@@ -178,6 +178,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
+    let userLocationMarker = null;
+    let nearestRoutingLine = null;
+
     // Xử lý Gõ phím tìm kiếm
     searchInput.addEventListener('input', (e) => {
         const val = e.target.value.toLowerCase().trim();
@@ -185,6 +188,25 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!val) {
             searchResults.classList.add('hidden');
             return;
+        }
+
+        // Kiểm tra xem input có phải là tọa độ không (vd: 11.58, 108.0 hoặc 11.58 108.0)
+        const coordMatch = val.match(/^([-+]?\d{1,2}(?:\.\d+)?)\s*[,;\s]\s*([-+]?\d{1,3}(?:\.\d+)?)$/);
+
+        if (coordMatch) {
+            const inputLat = parseFloat(coordMatch[1]);
+            const inputLon = parseFloat(coordMatch[2]);
+
+            // Validate tọa độ hợp lý
+            if (!isNaN(inputLat) && !isNaN(inputLon) && inputLat >= -90 && inputLat <= 90 && inputLon >= -180 && inputLon <= 180) {
+                searchResults.innerHTML = `
+                    <div class="search-result-item coordinate-search" data-search-lat="${inputLat}" data-search-lon="${inputLon}">
+                        <span style="color:var(--accent);margin-right:8px">📍</span> Tìm vị trí <strong>${inputLat}, ${inputLon}</strong> và node gần nhất
+                    </div>
+                `;
+                searchResults.classList.remove('hidden');
+                return;
+            }
         }
 
         // Filter maximum 10 items to prevent lag
@@ -213,6 +235,83 @@ document.addEventListener('DOMContentLoaded', () => {
     // Click vào item kết quả tìm kiếm để nhảy đến Node
     searchResults.addEventListener('click', (e) => {
         const item = e.target.closest('.search-result-item');
+
+        if (item && item.classList.contains('coordinate-search')) {
+            const inputLat = parseFloat(item.dataset.searchLat);
+            const inputLon = parseFloat(item.dataset.searchLon);
+            const inputLatLng = L.latLng(inputLat, inputLon);
+
+            if (userLocationMarker) map.removeLayer(userLocationMarker);
+            if (nearestRoutingLine) map.removeLayer(nearestRoutingLine);
+
+            userLocationMarker = L.circleMarker([inputLat, inputLon], {
+                radius: 8,
+                fillColor: "#ef4444",
+                color: "#ffffff",
+                weight: 2,
+                opacity: 1,
+                fillOpacity: 1
+            }).bindPopup("<div class='popup-title'>Vị trí bạn tìm kiếm</div>").addTo(map);
+
+            let nearestNode = null;
+            let minDistance = Infinity;
+
+            nodesData.forEach(node => {
+                const nodeLatLng = L.latLng(node.lat, node.lon);
+                // Sử dụng hàm distanceTo của Leaflet để tính khoảng cách mét
+                const distance = inputLatLng.distanceTo(nodeLatLng);
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    nearestNode = node;
+                }
+            });
+
+            if (nearestNode) {
+                nearestRoutingLine = L.polyline([inputLatLng, [nearestNode.lat, nearestNode.lon]], {
+                    color: '#ea580c',
+                    weight: 3,
+                    dashArray: '8, 8'
+                }).addTo(map);
+
+                if (currentHighlightedMarker && currentHighlightedMarker !== nearestNode.marker) {
+                    map.removeLayer(currentHighlightedMarker);
+                    markers.addLayer(currentHighlightedMarker);
+                }
+                currentHighlightedMarker = nearestNode.marker;
+                markers.removeLayer(nearestNode.marker);
+                map.addLayer(nearestNode.marker);
+
+                const bounds = L.latLngBounds([inputLatLng, [nearestNode.lat, nearestNode.lon]]);
+                map.fitBounds(bounds, { padding: [50, 50] });
+
+                nearestNode.marker.setPopupContent(`
+                    <div class="popup-title">${nearestNode.name}</div>
+                    <div class="popup-coords" style="margin-bottom: 8px;">
+                        <div style="color: #ea580c; font-weight: bold; margin-bottom: 4px; font-size: 0.9rem;">📍 Cách điểm này: ${(minDistance / 1000).toFixed(2)} km</div>
+                        <span><strong>Lat:</strong> ${nearestNode.lat.toFixed(6)}</span>
+                        <span><strong>Lon:</strong> ${nearestNode.lon.toFixed(6)}</span>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button class="copy-coords-btn" onclick="copyNodeCoords('${nearestNode.lat.toFixed(6)}, ${nearestNode.lon.toFixed(6)}', this)" style="flex: 1; padding: 6px; background-color: var(--accent); color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                            Copy TĐ
+                        </button>
+                        <button onclick="window.open('https://www.google.com/maps/dir/?api=1&destination=${nearestNode.lat},${nearestNode.lon}', '_blank')" style="flex: 1; padding: 6px; background-color: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 0.8rem; font-family: inherit; transition: background-color 0.2s;">
+                            Chỉ đường
+                        </button>
+                    </div>
+                `).openPopup();
+
+                userLocationMarker.openPopup();
+            } else {
+                map.setView([inputLat, inputLon], 16);
+                userLocationMarker.openPopup();
+            }
+
+            searchResults.classList.add('hidden');
+            searchInput.value = `${inputLat}, ${inputLon}`;
+            return;
+        }
+
         if (item && item.dataset.lat) {
             const name = item.dataset.name;
             const nodeData = nodesData.find(n => n.name === name);
@@ -246,7 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.key === 'Enter') {
             e.preventDefault();
             // Tự click vào kết quả đầu tiên nếu có
-            const firstChild = searchResults.querySelector('.search-result-item[data-lat]');
+            const firstChild = searchResults.querySelector('.search-result-item.coordinate-search') || searchResults.querySelector('.search-result-item[data-lat]');
             if (firstChild && !searchResults.classList.contains('hidden')) {
                 firstChild.click();
             }
@@ -255,8 +354,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Tính năng tìm node gần nhất
     const findNearestBtn = document.getElementById('find-nearest-btn');
-    let userLocationMarker = null;
-    let nearestRoutingLine = null;
 
     if (findNearestBtn) {
         findNearestBtn.addEventListener('click', () => {
