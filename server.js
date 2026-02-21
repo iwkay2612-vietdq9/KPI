@@ -214,11 +214,11 @@ app.post('/api/admin/chuongtrinh', ctUpload.array('image', 3), (req, res) => {
 
         if (githubToken && repoUrl) {
             // Push trực tiếp qua URL chứa token, bỏ qua 'origin'
-            const pushCommand = `git add chuongtrinh.txt public/chuongtrinh_image* && git commit -m "Auto update Chuong trinh Kich thich" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
+            const pushCommand = `git add chuongtrinh.txt "public/chuongtrinh_image*" && git commit -m "Auto update Chuong trinh Kich thich" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
             runGitPush(pushCommand);
         } else {
             console.log("Thiếu GITHUB_TOKEN hoặc REPO_URL. Thử commit local và push mặc định...");
-            const fallbackCommand = `git add chuongtrinh.txt public/chuongtrinh_image* && git commit -m "Auto update Chuong trinh Kich thich" && git push`;
+            const fallbackCommand = `git add chuongtrinh.txt "public/chuongtrinh_image*" && git commit -m "Auto update Chuong trinh Kich thich" && git push`;
             runGitPush(fallbackCommand);
         }
 
