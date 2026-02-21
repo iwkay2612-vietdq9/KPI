@@ -1,0 +1,417 @@
+:root {
+    --bg-color: #0f172a;
+    --header-bg: rgba(15, 23, 42, 0.85);
+    --text-primary: #f8fafc;
+    --text-muted: #94a3b8;
+    --accent: #3b82f6;
+    --accent-hover: #60a5fa;
+    --card-bg: #1e293b;
+    --border: #334155;
+
+    /* Marker Cluster Custom Colors */
+    --cluster-small: rgba(59, 130, 246, 0.6);
+    --cluster-small-border: rgba(59, 130, 246, 0.4);
+    --cluster-medium: rgba(139, 92, 246, 0.6);
+    --cluster-medium-border: rgba(139, 92, 246, 0.4);
+    --cluster-large: rgba(236, 72, 153, 0.6);
+    --cluster-large-border: rgba(236, 72, 153, 0.4);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-primary);
+    overflow: hidden;
+    -webkit-font-smoothing: antialiased;
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    width: 100vw;
+}
+
+/* Header */
+.app-header {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    z-index: 1000;
+    background: var(--header-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0.8rem 2rem;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.header-content {
+    max-width: 1600px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--accent);
+}
+
+.logo h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #60a5fa, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    letter-spacing: -0.025em;
+}
+
+/* Search Box */
+.search-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-box {
+    display: flex;
+    align-items: center;
+    background: rgba(30, 41, 59, 0.8);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 12px;
+    width: 380px;
+    transition: all 0.2s ease;
+}
+
+.search-box:focus-within {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+}
+
+.search-box input {
+    background: transparent;
+    border: none;
+    color: var(--text-primary);
+    padding: 6px;
+    outline: none;
+    flex-grow: 1;
+    font-size: 0.95rem;
+}
+
+.search-box input::placeholder {
+    color: var(--text-muted);
+}
+
+.search-box button {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s;
+}
+
+.search-box button:hover {
+    color: var(--accent);
+}
+
+.search-results {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    right: 0;
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    max-height: 350px;
+    overflow-y: auto;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -4px rgba(0, 0, 0, 0.4);
+    z-index: 1001;
+}
+
+.search-results.hidden {
+    display: none;
+}
+
+.search-result-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    border-bottom: 1px solid rgba(51, 65, 85, 0.5);
+    transition: background 0.2s;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.search-result-item:last-child {
+    border-bottom: none;
+}
+
+.search-result-item:hover {
+    background: rgba(51, 65, 85, 0.8);
+    color: var(--accent-hover);
+}
+
+/* Stats */
+.stats {
+    background: var(--card-bg);
+    padding: 0.5rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--accent-hover);
+    border: 1px solid var(--border);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Map Container */
+.map-container {
+    flex-grow: 1;
+    position: relative;
+    height: 100%;
+    width: 100%;
+    margin-top: 68px;
+    /* header height */
+}
+
+#map {
+    height: 100%;
+    width: 100%;
+    background-color: #1a1a1a;
+    z-index: 1;
+}
+
+/* Custom Popup Styles */
+.leaflet-popup-content-wrapper {
+    background: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border-radius: 12px !important;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.25) !important;
+}
+
+.leaflet-popup-tip {
+    background: var(--card-bg) !important;
+    border: 1px solid var(--border);
+    border-top: none;
+    border-left: none;
+    box-shadow: 2px 2px 2px rgba(0, 0, 0, 0.1);
+}
+
+.leaflet-popup-content {
+    margin: 18px 22px !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+.popup-title {
+    font-weight: 700;
+    font-size: 1.15rem;
+    color: #e2e8f0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 10px;
+    letter-spacing: -0.01em;
+}
+
+.popup-coords {
+    font-size: 0.9rem;
+    color: var(--text-muted);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.popup-coords span strong {
+    color: #cbd5e1;
+    width: 40px;
+    display: inline-block;
+}
+
+/* Dark Map Tiles Filter */
+.leaflet-tile-pane {
+    filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
+}
+
+/* Base UI Fixes */
+.leaflet-control-zoom a {
+    background: var(--card-bg) !important;
+    color: var(--text-primary) !important;
+    border-color: var(--border) !important;
+}
+
+.leaflet-control-zoom a:hover {
+    background: var(--border) !important;
+    color: var(--accent-hover) !important;
+}
+
+.leaflet-container .leaflet-control-attribution {
+    background: var(--header-bg) !important;
+    color: var(--text-muted) !important;
+}
+
+/* Loader */
+.loader-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(15, 23, 42, 0.95);
+    z-index: 2000;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 1.5rem;
+    transition: opacity 0.5s ease;
+}
+
+.loader-overlay.hidden {
+    opacity: 0;
+    pointer-events: none;
+}
+
+.loader-overlay p {
+    font-weight: 500;
+    color: var(--accent-hover);
+    font-size: 1.1rem;
+    letter-spacing: 0.025em;
+    animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: .5;
+    }
+}
+
+.spinner {
+    width: 48px;
+    height: 48px;
+    border: 4px solid rgba(51, 65, 85, 0.5);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 1s cubic-bezier(0.5, 0.1, 0.4, 0.9) infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Popup animations */
+.leaflet-popup {
+    transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.2s ease !important;
+}
+
+/* Custom Marker Label (Hiển thị tên trạm luôn luôn) */
+.node-label {
+    background: rgba(15, 23, 42, 0.85);
+    border: 1px solid var(--border);
+    color: #e2e8f0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 2px 6px;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+    white-space: nowrap;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    pointer-events: none;
+    /* Tránh cản trở việc click vào popup/marker */
+}
+
+/* Sửa lỗi mũi tên hiển thị ngược sáng ở chế độ Dark Mode của tooltip */
+.leaflet-tooltip-right.node-label::before {
+    border-right-color: var(--border);
+}
+
+.leaflet-tooltip-left.node-label::before {
+    border-left-color: var(--border);
+}
+
+.leaflet-tooltip-top.node-label::before {
+    border-top-color: var(--border);
+}
+
+.leaflet-tooltip-bottom.node-label::before {
+    border-bottom-color: var(--border);
+}
+
+/* Custom Marker Cluster Styling (Hiển thị tên trạm) */
+.custom-cluster-icon {
+    background: transparent;
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.custom-cluster-label {
+    background: rgba(139, 92, 246, 0.9);
+    /* Màu tím bo tròn */
+    border: 2px solid rgba(196, 181, 253, 0.6);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    padding: 6px 14px;
+    border-radius: 20px;
+    white-space: nowrap;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+    transition: all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+    transform-origin: center center;
+}
+
+.custom-cluster-icon:hover .custom-cluster-label {
+    background: rgba(124, 58, 237, 1);
+    transform: scale(1.08);
+    border-color: rgba(221, 214, 254, 0.8);
+    z-index: 1000;
+}
+
+.marker-cluster {
+    background-clip: padding-box;
+    border-radius: 20px;
+}
+
+.marker-cluster div {
+    width: 32px;
+    height: 32px;
+    margin-left: 4px;
+    margin-top: 4px;
+    text-align: center;
+    border-radius: 16px;
+    font: 13px "Inter", sans-serif;
+    font-weight: 700;
+    line-height: 32px;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.marker-cluster span {
+    line-height: 32px;
+}

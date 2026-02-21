@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
+const AdmZip = require('adm-zip');
 
 const app = express();
 const port = 3000;
@@ -231,6 +232,81 @@ app.post('/api/admin/chuongtrinh', ctUpload.array('image', 3), (req, res) => {
     }
 });
 
+// API to upload KMZ / KML map files
+app.post('/api/upload-kmz', upload.single('file'), (req, res) => {
+    try {
+        console.log("--- Starting KMZ Upload Process ---");
+        // Password check
+        if (req.body.password !== "admin123") {
+            return res.status(401).send('Sai mật khẩu!');
+        }
+
+        if (!req.file) {
+            return res.status(400).send('Chưa chọn file.');
+        }
+
+        const uploadedFilePath = path.join(__dirname, 'uploaded_data.xlsx'); // default filename from multer
+        const ext = path.extname(req.file.originalname).toLowerCase();
+
+        // Target path is public/extracted_kmz/SITE.kml
+        const targetDir = path.join(__dirname, 'public', 'extracted_kmz');
+        if (!fs.existsSync(targetDir)) {
+            fs.mkdirSync(targetDir, { recursive: true });
+        }
+        const targetFilePath = path.join(targetDir, 'SITE.kml');
+
+        if (ext === '.kmz') {
+            const zip = new AdmZip(uploadedFilePath);
+            const zipEntries = zip.getEntries();
+            let kmlEntry = zipEntries.find(entry => entry.name.toLowerCase().endsWith('.kml'));
+
+            if (!kmlEntry) {
+                return res.status(400).send('Lỗi: File KMZ không chứa file KML nào bên trong.');
+            }
+
+            // Read the text content and overwrite SITE.kml
+            const kmlContent = zip.readAsText(kmlEntry);
+            fs.writeFileSync(targetFilePath, kmlContent);
+            console.log("KMZ extracted and SITE.kml saved.");
+        } else if (ext === '.kml') {
+            fs.copyFileSync(uploadedFilePath, targetFilePath);
+            console.log("KML file copied successfully.");
+        } else {
+            return res.status(400).send('Định dạng file không hỗ trợ. Vui lòng chọn file .kmz hoặc .kml');
+        }
+
+        // Tự động push lên GitHub
+        console.log("Bắt đầu tự động push bản đồ lên GitHub...");
+
+        const githubToken = process.env.GITHUB_TOKEN;
+        const repoUrl = process.env.REPO_URL;
+
+        const runGitPush = (cmd) => {
+            exec(`git config user.email "bot@admin.com" && git config user.name "Admin Bot" && ${cmd}`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Auto-push error log: ${error.message}`);
+                } else {
+                    console.log(`Auto-push thành công! stdout: ${stdout}`);
+                }
+            });
+        };
+
+        if (githubToken && repoUrl) {
+            const pushCommand = `git add public/extracted_kmz/SITE.kml && git commit -m "Auto update KML/KMZ Map tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
+            runGitPush(pushCommand);
+        } else {
+            const fallbackCommand = `git add public/extracted_kmz/SITE.kml && git commit -m "Auto update KML/KMZ Map tu Admin" && git push`;
+            runGitPush(fallbackCommand);
+        }
+
+        res.send(`Cập nhật bản đồ thành công! Hệ thống đang tự động đồng bộ lên dữ liệu đám mây...`);
+
+    } catch (err) {
+        console.error("Server Error uploading KMZ:", err);
+        res.status(500).send('Lỗi máy chủ: ' + err.message);
+    }
+});
+
 // API to upload and import data
 app.post('/api/upload', upload.single('file'), (req, res) => {
     try {
@@ -266,17 +342,17 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
         const runGitPush = (cmd) => {
             exec(`git config user.email "bot@admin.com" && git config user.name "Admin Bot" && ${cmd}`, (error, stdout, stderr) => {
                 if (error) {
-                    console.error(`Auto-push error log: ${error.message}`);
+                    console.error(`Auto - push error log: ${error.message}`);
                     if (stderr) console.error(`stderr: ${stderr}`);
                 } else {
-                    console.log(`Auto-push thành công! stdout: ${stdout}`);
+                    console.log(`Auto - push thành công! stdout: ${stdout}`);
                 }
             });
         };
 
         if (githubToken && repoUrl) {
             // Push trực tiếp qua URL chứa token, bỏ qua 'origin'
-            const pushCommand = `git add filetiendo.xlsx && git commit -m "Auto update Excel data tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
+            const pushCommand = `git add filetiendo.xlsx && git commit - m "Auto update Excel data tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
             runGitPush(pushCommand);
         } else {
             console.log("Thiếu GITHUB_TOKEN hoặc REPO_URL. Thử commit local và push mặc định...");
