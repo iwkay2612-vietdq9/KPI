@@ -117,8 +117,9 @@
                     style="width:100%; padding:8px; box-sizing:border-box; font-family: inherit; resize: vertical;"></textarea>
             </div>
             <div style="margin-bottom: 15px; text-align: left;">
-                <label for="ct_image" style="display:block; margin-bottom:5px;">Hình ảnh đính kèm (tùy chọn):</label>
-                <input type="file" id="ct_image" name="image" accept="image/*"
+                <label for="ct_image" style="display:block; margin-bottom:5px;">Hình ảnh đính kèm (tối đa 3
+                    ảnh):</label>
+                <input type="file" id="ct_image" name="image" accept="image/*" multiple
                     style="width:100%; padding:8px; box-sizing:border-box; border: 1px solid #ddd; border-radius: 4px;">
             </div>
             <div id="current_image_info" style="margin-bottom: 15px; text-align: left; font-size: 13px; color: #555;">
@@ -181,7 +182,13 @@
             })
             .then(data => {
                 ctText.value = data.text || '';
-                if (data.imageUrl) {
+                if (data.imageUrls && data.imageUrls.length > 0) {
+                    let html = 'Hình ảnh hiện tại: <br/>';
+                    data.imageUrls.forEach((url, index) => {
+                        html += `- <a href="${url}" target="_blank">Xem ảnh ${index + 1}</a><br/>`;
+                    });
+                    currentImageInfo.innerHTML = html;
+                } else if (data.imageUrl) {
                     currentImageInfo.innerHTML = `Hình ảnh hiện tại: <a href="${data.imageUrl}" target="_blank">Xem ảnh</a>`;
                 } else {
                     currentImageInfo.innerHTML = 'Chưa có hình ảnh đính kèm.';

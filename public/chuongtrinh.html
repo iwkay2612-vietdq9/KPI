@@ -75,8 +75,14 @@
                 if (!res.ok) throw new Error('Network error');
                 const data = await res.json();
                 contentDiv.textContent = data.text || 'Hiện chưa có chương trình nào được cập nhật.';
-                if (data.imageUrl) {
-                    imageDiv.innerHTML = `<img src="${data.imageUrl}" alt="Chương trình kích thích kênh" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">`;
+                if (data.imageUrls && data.imageUrls.length > 0) {
+                    let html = '';
+                    data.imageUrls.forEach(url => {
+                        html += `<img src="${url}" alt="Chương trình kích thích kênh" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); margin-bottom: 15px; display: block; margin-left: auto; margin-right: auto;">`;
+                    });
+                    imageDiv.innerHTML = html;
+                } else if (data.imageUrl) {
+                    imageDiv.innerHTML = `<img src="${data.imageUrl}" alt="Chương trình kích thích kênh" style="max-width: 100%; height: auto; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1); display: block; margin-left: auto; margin-right: auto;">`;
                 }
             } catch (err) {
                 console.error(err);

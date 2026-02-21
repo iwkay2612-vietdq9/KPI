@@ -27,7 +27,7 @@ const ctStorage = multer.diskStorage({
     },
     filename: function (req, file, cb) {
         const ext = path.extname(file.originalname);
-        cb(null, 'chuongtrinh_image' + ext);
+        cb(null, 'chuongtrinh_image_' + Date.now() + '_' + Math.round(Math.random() * 1E9) + ext);
     }
 });
 const ctUpload = multer({ storage: ctStorage });
@@ -133,48 +133,59 @@ app.get('/api/chuongtrinh', (req, res) => {
         textInfo = fs.readFileSync(filePath, 'utf8');
     }
 
-    // Check if image exists
+    // Check if images exist
     const publicDir = path.join(__dirname, 'public');
-    let imageUrl = null;
+    let imageUrls = [];
     if (fs.existsSync(publicDir)) {
         const files = fs.readdirSync(publicDir);
-        const imageFile = files.find(f => f.startsWith('chuongtrinh_image.'));
-        if (imageFile) {
-            imageUrl = '/' + imageFile; // e.g. /chuongtrinh_image.png
+        // Find all images matching the prefix
+        const imageFiles = files.filter(f => f.startsWith('chuongtrinh_image_'));
+        // Sort them just so they maintain a somewhat consistent order (by timestamp)
+        imageFiles.sort();
+        if (imageFiles.length > 0) {
+            imageUrls = imageFiles.map(f => '/' + f);
         }
     }
 
-    res.json({ text: textInfo, imageUrl: imageUrl });
+    // We still pass imageUrl (the first one) for backwards compatibility or single image displays,
+    // but also pass the full array imageUrls.
+    res.json({ text: textInfo, imageUrl: imageUrls.length > 0 ? imageUrls[0] : null, imageUrls: imageUrls });
 });
 
-// API to update stimulus program text and image
-app.post('/api/admin/chuongtrinh', ctUpload.single('image'), (req, res) => {
+// API to update stimulus program text and images
+app.post('/api/admin/chuongtrinh', ctUpload.array('image', 3), (req, res) => {
     if (req.body.password !== "admin123") {
         return res.status(401).send('Sai mật khẩu!');
     }
     const text = req.body.text || '';
     const filePath = path.join(__dirname, 'chuongtrinh.txt');
 
-    // If a new image was uploaded, we should probably delete any existing ones with different extensions to avoid clutter
-    if (req.file) {
+    // If ANY new images were uploaded, delete ALL existing ones first to replace them.
+    // If the user uploads nothing, we keep the existing images.
+    // To completely delete images without uploading new ones, they would use the 'deleteImage' flag.
+    if (req.files && req.files.length > 0) {
         const publicDir = path.join(__dirname, 'public');
         if (fs.existsSync(publicDir)) {
             const files = fs.readdirSync(publicDir);
+
+            // Collect the filenames of the newly uploaded files so we don't delete them
+            const newFileNames = req.files.map(f => f.filename);
+
             files.forEach(f => {
-                if (f.startsWith('chuongtrinh_image.') && f !== req.file.filename) {
+                if (f.startsWith('chuongtrinh_image_') && !newFileNames.includes(f)) {
                     fs.unlinkSync(path.join(publicDir, f));
                 }
             });
         }
     }
 
-    // If user wants to delete image specifically, we could add a flag. Assuming simple replace for now.
+    // If user wants to clear all images explicitly
     if (req.body.deleteImage === "true") {
         const publicDir = path.join(__dirname, 'public');
         if (fs.existsSync(publicDir)) {
             const files = fs.readdirSync(publicDir);
             files.forEach(f => {
-                if (f.startsWith('chuongtrinh_image.')) {
+                if (f.startsWith('chuongtrinh_image_')) {
                     fs.unlinkSync(path.join(publicDir, f));
                 }
             });
