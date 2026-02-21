@@ -680,5 +680,44 @@
                 container.style.display = 'none';
             }
         }
+
+        function renderRoitivi(employeeName) {
+            const container = document.getElementById('roitiviArea');
+            const tbody = document.getElementById('roitiviBody');
+            tbody.innerHTML = '';
+
+            if (!roitiviData || roitiviData.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const code = getEmployeeCode(employeeName);
+
+            const filteredData = roitiviData.filter(row => {
+                if (!row.STAFF_CODE_THU_CUOC) return false;
+                const rowCode = row.STAFF_CODE_THU_CUOC.toString();
+                const prefix = rowCode.split('_')[0];
+                return rowCode.startsWith(code + '_') || rowCode === code || (prefix.startsWith(code) && prefix.replace(code, '').match(/^\d*$/));
+            });
+
+            if (filteredData.length > 0) {
+                container.style.display = 'block';
+                filteredData.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const thueBao = item.THUE_BAO || '';
+                    const goiCuoc = item.GOI_CUOC || '';
+                    const dateVal = excelDateToJSDate(item.NGAY_CHAN_CHAR) || '';
+
+                    tr.innerHTML = `
+                        <td style="text-align: left; padding-left: 10px; font-size: 14px; border: 1px solid #000;">${thueBao}</td>
+                        <td style="text-align: left; padding-left: 10px; font-size: 14px; border: 1px solid #000;">${goiCuoc}</td>
+                        <td style="text-align: right; padding-right: 10px; font-size: 14px; border: 1px solid #000;">${dateVal}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                container.style.display = 'none';
+            }
+        }
     </script>
 </body>
