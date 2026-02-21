@@ -352,7 +352,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
         if (githubToken && repoUrl) {
             // Push trực tiếp qua URL chứa token, bỏ qua 'origin'
-            const pushCommand = `git add filetiendo.xlsx && git commit - m "Auto update Excel data tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
+            const pushCommand = `git add filetiendo.xlsx && git commit -m "Auto update Excel data tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
             runGitPush(pushCommand);
         } else {
             console.log("Thiếu GITHUB_TOKEN hoặc REPO_URL. Thử commit local và push mặc định...");
@@ -364,6 +364,76 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
 
     } catch (err) {
         console.error("Server Error:", err);
+        res.status(500).send('Lỗi máy chủ: ' + err.message);
+    }
+});
+
+// API to upload and import Rời mạng FTTH data
+app.post('/api/upload-roimangftth', upload.single('file'), (req, res) => {
+    try {
+        if (req.body.password !== "admin123") {
+            return res.status(401).send('Sai mật khẩu!');
+        }
+        if (!req.file) {
+            return res.status(400).send('Chưa chọn file.');
+        }
+
+        const uploadedFilePath = path.join(__dirname, 'uploaded_data.xlsx');
+        const targetFilePath = path.join(__dirname, 'roimangftth.xlsx');
+        fs.copyFileSync(uploadedFilePath, targetFilePath);
+
+        const githubToken = process.env.GITHUB_TOKEN;
+        const repoUrl = process.env.REPO_URL;
+        const runGitPush = (cmd) => {
+            exec(`git config user.email "bot@admin.com" && git config user.name "Admin Bot" && ${cmd}`, (error, stdout, stderr) => {
+                if (error) console.error(`Auto-push error: ${error.message}`);
+                else console.log(`Auto-push success: ${stdout}`);
+            });
+        };
+
+        if (githubToken && repoUrl) {
+            runGitPush(`git add roimangftth.xlsx && git commit -m "Auto update roimangftth tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`);
+        } else {
+            runGitPush(`git add roimangftth.xlsx && git commit -m "Auto update roimangftth tu Admin" && git push`);
+        }
+
+        res.send(`Cập nhật dữ liệu Rời mạng FTTH thành công!\nHệ thống đang tự động đồng bộ lên GitHub trong nền...`);
+    } catch (err) {
+        res.status(500).send('Lỗi máy chủ: ' + err.message);
+    }
+});
+
+// API to upload and import Rời mạng Tivi data
+app.post('/api/upload-roimangtivi', upload.single('file'), (req, res) => {
+    try {
+        if (req.body.password !== "admin123") {
+            return res.status(401).send('Sai mật khẩu!');
+        }
+        if (!req.file) {
+            return res.status(400).send('Chưa chọn file.');
+        }
+
+        const uploadedFilePath = path.join(__dirname, 'uploaded_data.xlsx');
+        const targetFilePath = path.join(__dirname, 'roimangtivi.xlsx');
+        fs.copyFileSync(uploadedFilePath, targetFilePath);
+
+        const githubToken = process.env.GITHUB_TOKEN;
+        const repoUrl = process.env.REPO_URL;
+        const runGitPush = (cmd) => {
+            exec(`git config user.email "bot@admin.com" && git config user.name "Admin Bot" && ${cmd}`, (error, stdout, stderr) => {
+                if (error) console.error(`Auto-push error: ${error.message}`);
+                else console.log(`Auto-push success: ${stdout}`);
+            });
+        };
+
+        if (githubToken && repoUrl) {
+            runGitPush(`git add roimangtivi.xlsx && git commit -m "Auto update roimangtivi tu Admin" && git push https://${githubToken}@${repoUrl} HEAD:main -f`);
+        } else {
+            runGitPush(`git add roimangtivi.xlsx && git commit -m "Auto update roimangtivi tu Admin" && git push`);
+        }
+
+        res.send(`Cập nhật dữ liệu Rời mạng Tivi thành công!\nHệ thống đang tự động đồng bộ lên GitHub trong nền...`);
+    } catch (err) {
         res.status(500).send('Lỗi máy chủ: ' + err.message);
     }
 });

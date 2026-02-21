@@ -104,6 +104,40 @@
 
         <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
 
+        <h1>Cập Nhật Rời Mạng FTTH</h1>
+        <form id="uploadRoimangForm">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="roimang_password" style="display:block; margin-bottom:5px;">Mật khẩu Admin:</label>
+                <input type="password" id="roimang_password" name="password" required
+                    style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="roimang_file" style="display:block; margin-bottom:5px;">File Rời mạng FTTH (.xlsx):</label>
+                <input type="file" id="roimang_file" name="file" accept=".xlsx, .xls" required />
+            </div>
+            <button type="submit">Cập nhật Rời mạng FTTH</button>
+        </form>
+        <div id="roimang_message" style="margin-top: 15px; font-size: 14px;"></div>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h1>Cập Nhật Rời Mạng Tivi</h1>
+        <form id="uploadRoitiviForm">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="roitivi_password" style="display:block; margin-bottom:5px;">Mật khẩu Admin:</label>
+                <input type="password" id="roitivi_password" name="password" required
+                    style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="roitivi_file" style="display:block; margin-bottom:5px;">File Rời mạng Tivi (.xlsx):</label>
+                <input type="file" id="roitivi_file" name="file" accept=".xlsx, .xls" required />
+            </div>
+            <button type="submit">Cập nhật Rời mạng Tivi</button>
+        </form>
+        <div id="roitivi_message" style="margin-top: 15px; font-size: 14px;"></div>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+
         <h1>Cập Nhật Bản Đồ Node (KMZ/KML)</h1>
         <form id="uploadKmzForm">
             <div style="margin-bottom: 15px; text-align: left;">
@@ -216,6 +250,74 @@
                 console.error('Error:', error);
                 kmzMessageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
                 kmzMessageDiv.className = 'error';
+            }
+        });
+
+        // Phần code Upload Rời mạng FTTH
+        const roimangForm = document.getElementById('uploadRoimangForm');
+        const roimangMessageDiv = document.getElementById('roimang_message');
+
+        roimangForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            roimangMessageDiv.textContent = 'Đang xử lý...';
+            roimangMessageDiv.className = '';
+
+            const formData = new FormData(roimangForm);
+
+            try {
+                const response = await fetch('/api/upload-roimangftth', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+                    roimangMessageDiv.textContent = text;
+                    roimangMessageDiv.className = 'success';
+                    roimangForm.reset();
+                } else {
+                    const text = await response.text();
+                    roimangMessageDiv.textContent = 'Lỗi: ' + text;
+                    roimangMessageDiv.className = 'error';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                roimangMessageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
+                roimangMessageDiv.className = 'error';
+            }
+        });
+
+        // Phần code Upload Rời mạng Tivi
+        const roitiviForm = document.getElementById('uploadRoitiviForm');
+        const roitiviMessageDiv = document.getElementById('roitivi_message');
+
+        roitiviForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            roitiviMessageDiv.textContent = 'Đang xử lý...';
+            roitiviMessageDiv.className = '';
+
+            const formData = new FormData(roitiviForm);
+
+            try {
+                const response = await fetch('/api/upload-roimangtivi', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+                    roitiviMessageDiv.textContent = text;
+                    roitiviMessageDiv.className = 'success';
+                    roitiviForm.reset();
+                } else {
+                    const text = await response.text();
+                    roitiviMessageDiv.textContent = 'Lỗi: ' + text;
+                    roitiviMessageDiv.className = 'error';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                roitiviMessageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
+                roitiviMessageDiv.className = 'error';
             }
         });
 
