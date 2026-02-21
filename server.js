@@ -21,13 +21,15 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage });
 
 // Separate multer for the stimulus program image
+let imageUploadCounter = 0;
 const ctStorage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, './public'); // Save directly to public to serve it easily
     },
     filename: function (req, file, cb) {
         const ext = path.extname(file.originalname);
-        cb(null, 'chuongtrinh_image_' + Date.now() + '_' + Math.round(Math.random() * 1E9) + ext);
+        imageUploadCounter++;
+        cb(null, 'chuongtrinh_image_' + Date.now() + '_' + String(imageUploadCounter).padStart(3, '0') + ext);
     }
 });
 const ctUpload = multer({ storage: ctStorage });
