@@ -165,10 +165,59 @@
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                const res = await fetch('/api/tiendo');
-                if (!res.ok) throw new Error('Network error');
-                const data = await res.json();
-                renderTable(data);
+                const [resTiendo, resCuoc] = await Promise.all([
+                    fetch('/api/tiendo'),
+                    fetch('/api/cuoc')
+                ]);
+
+                if (!resTiendo.ok || !resCuoc.ok) throw new Error('Network error');
+
+                const dataTiendo = await resTiendo.json();
+                const dataCuoc = await resCuoc.json();
+
+                // Build a map of cuoc data by 'Nhân Viên' (Column 15)
+                // Col 16: Đầu kỳ, 17: Cước ngày n-1, 18: [blank], 19: Cước thu được
+                const cuocMap = {};
+                for (let i = 5; i < dataCuoc.length; i++) {
+                    const row = dataCuoc[i];
+                    if (row && row[15]) {
+                        cuocMap[row[15]] = [
+                            row[16] || 0,
+                            row[17] || 0,
+                            row[18] || 0,
+                            row[19] || 0
+                        ];
+                    }
+                }
+
+                let maxCols = 0;
+                dataTiendo.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
+
+                // Pad all existing data arrays to maxCols so that appended columns align
+                for (let i = 0; i < dataTiendo.length; i++) {
+                    while (dataTiendo[i].length < maxCols) {
+                        dataTiendo[i].push("");
+                    }
+                }
+
+                // Header rows
+                dataTiendo[0].push("Cước thu", "", "", "");
+                dataTiendo[1].push("", "", "", "");
+                dataTiendo[2].push("Đầu kỳ", "Cước ngày n-1", "", "Cước thu được trong ngày");
+
+                // Data rows
+                for (let i = 3; i < dataTiendo.length; i++) {
+                    const empCode = dataTiendo[i][0];
+                    if (empCode && cuocMap[empCode]) {
+                        dataTiendo[i].push(...cuocMap[empCode]);
+                    } else if (empCode) {
+                        dataTiendo[i].push("", "", "", "");
+                    } else {
+                        dataTiendo[i].push("", "", "", "");
+                    }
+                }
+
+                renderTable(dataTiendo);
             } catch (e) {
                 console.error(e);
                 document.getElementById('status').textContent = 'Lỗi kết nối. Không thể tải dữ liệu.';
@@ -209,6 +258,7 @@
                             const valLower = cellValue.toLowerCase();
                             if (valLower.includes('cố định')) th.className = 'cat-codinh';
                             else if (valLower.includes('di động')) th.className = 'cat-didong';
+                            else if (valLower.includes('cước thu')) th.style.backgroundColor = '#5B9BD5'; // Blue hue
                             else if (valLower.includes('cước')) th.className = 'cat-cuoc';
                             else if (valLower.includes('trọng điểm')) th.className = 'cat-chuongtrinh';
                             else th.style.backgroundColor = '#ccc';
@@ -275,18 +325,34 @@
                             textVal = (val * 100).toFixed(0) + '%';
                             if (val < 1) td.className = 'bg-red';
                             else if (val >= 1) td.className = 'bg-green';
-                        } else if (val >= 1000 || (typeof rowData[0] === 'string' && rowData[0].includes('_NVKD') && c > 0)) {
+                        } else if (thVal === 'Đầu kỳ' || thVal === 'Cước ngày n-1' || (thVal === '' && c > maxCols - 4) || thVal.includes('Cước thu được')) {
+                            // Accounting format for newly added Cuoc columns
+                            const absVal = Math.abs(val).toLocaleString('en-US', { maximumFractionDigits: 0 });
+                            textVal = val < 0 ? `-$${absVal}` : `$${absVal}`;
+                            td.style.fontWeight = 'bold';
+
+                            // Specific background colors based on header name
+                            if (thVal === 'Đầu kỳ') {
+                                td.style.backgroundColor = '#ED7D31'; // Orange
+                                td.style.color = 'black';
+                            } else {
+                                td.style.backgroundColor = '#FFC000'; // Yellow
+                                td.style.color = 'black';
+                            }
+                        } else if (val >= 1000 || val <= -1000 || (typeof rowData[0] === 'string' && rowData[0].includes('_NVKD') && c > 0)) {
                             // Format as money/large number with thousand separators
                             textVal = val.toLocaleString('vi-VN', { maximumFractionDigits: 2 });
                         } else if (thVal.toLowerCase() === 'thiếu' && val > 0) {
                             td.classList.add('text-red');
                             // Add yellow light background for TH/Thiếu column if possible
-                            // The image shows yellow background for TH and Thiếu but it's okay to just use text color
                             if (!Number.isInteger(val)) textVal = val.toFixed(2);
                         } else if (!Number.isInteger(val)) {
                             // If it's a floating point number not marked as %, probably needs formatting
                             textVal = val.toFixed(2);
                         }
+                    } else if (typeof val === 'string' && !isNaN(parseFloat(val))) {
+                        // Sometimes excel data comes as string, let's also account for it if needed
+                        // But mostly sheet_to_json returns numbers.
                     }
 
                     if (c < 3 && textVal !== "") td.classList.add('fixed-bg');
@@ -294,6 +360,11 @@
                     if (rowData[0] && data[2][c] === 'TH') {
                         // some soft background
                         td.classList.add('bg-yellow-light');
+                    }
+
+                    // Specific header background formatting from row 2
+                    if (i === 2) {
+                        // No need since header is created differently, but just in case
                     }
 
                     td.textContent = textVal;
