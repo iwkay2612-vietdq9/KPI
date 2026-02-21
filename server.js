@@ -20,6 +20,18 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
+// Separate multer for the stimulus program image
+const ctStorage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, './public'); // Save directly to public to serve it easily
+    },
+    filename: function (req, file, cb) {
+        const ext = path.extname(file.originalname);
+        cb(null, 'chuongtrinh_image' + ext);
+    }
+});
+const ctUpload = multer({ storage: ctStorage });
+
 // Serve static files from 'public' directory
 app.use(express.static('public'));
 
@@ -113,23 +125,62 @@ app.get('/api/tiendo', (req, res) => {
     }
 });
 
-// API to get stimulus program text
+// API to get stimulus program details (JSON)
 app.get('/api/chuongtrinh', (req, res) => {
     const filePath = path.join(__dirname, 'chuongtrinh.txt');
+    let textInfo = '';
     if (fs.existsSync(filePath)) {
-        res.sendFile(filePath);
-    } else {
-        res.send('');
+        textInfo = fs.readFileSync(filePath, 'utf8');
     }
+
+    // Check if image exists
+    const publicDir = path.join(__dirname, 'public');
+    let imageUrl = null;
+    if (fs.existsSync(publicDir)) {
+        const files = fs.readdirSync(publicDir);
+        const imageFile = files.find(f => f.startsWith('chuongtrinh_image.'));
+        if (imageFile) {
+            imageUrl = '/' + imageFile; // e.g. /chuongtrinh_image.png
+        }
+    }
+
+    res.json({ text: textInfo, imageUrl: imageUrl });
 });
 
-// API to update stimulus program text
-app.post('/api/admin/chuongtrinh', (req, res) => {
+// API to update stimulus program text and image
+app.post('/api/admin/chuongtrinh', ctUpload.single('image'), (req, res) => {
     if (req.body.password !== "admin123") {
         return res.status(401).send('Sai mật khẩu!');
     }
     const text = req.body.text || '';
     const filePath = path.join(__dirname, 'chuongtrinh.txt');
+
+    // If a new image was uploaded, we should probably delete any existing ones with different extensions to avoid clutter
+    if (req.file) {
+        const publicDir = path.join(__dirname, 'public');
+        if (fs.existsSync(publicDir)) {
+            const files = fs.readdirSync(publicDir);
+            files.forEach(f => {
+                if (f.startsWith('chuongtrinh_image.') && f !== req.file.filename) {
+                    fs.unlinkSync(path.join(publicDir, f));
+                }
+            });
+        }
+    }
+
+    // If user wants to delete image specifically, we could add a flag. Assuming simple replace for now.
+    if (req.body.deleteImage === "true") {
+        const publicDir = path.join(__dirname, 'public');
+        if (fs.existsSync(publicDir)) {
+            const files = fs.readdirSync(publicDir);
+            files.forEach(f => {
+                if (f.startsWith('chuongtrinh_image.')) {
+                    fs.unlinkSync(path.join(publicDir, f));
+                }
+            });
+        }
+    }
+
     try {
         fs.writeFileSync(filePath, text);
         res.send('Cập nhật chương trình kích thích kênh thành công!');

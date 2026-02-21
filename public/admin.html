@@ -116,7 +116,15 @@
                 <textarea id="ct_text" name="text" rows="8"
                     style="width:100%; padding:8px; box-sizing:border-box; font-family: inherit; resize: vertical;"></textarea>
             </div>
-            <button type="submit">Lưu Nội Dung Chương Trình</button>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="ct_image" style="display:block; margin-bottom:5px;">Hình ảnh đính kèm (tùy chọn):</label>
+                <input type="file" id="ct_image" name="image" accept="image/*"
+                    style="width:100%; padding:8px; box-sizing:border-box; border: 1px solid #ddd; border-radius: 4px;">
+            </div>
+            <div id="current_image_info" style="margin-bottom: 15px; text-align: left; font-size: 13px; color: #555;">
+                <!-- Displays current image info -->
+            </div>
+            <button type="submit">Lưu Nội Dung & Hình Ảnh</button>
         </form>
         <div id="ct_message" style="margin-top: 15px; font-size: 14px;"></div>
 
@@ -163,19 +171,24 @@
         const ctText = document.getElementById('ct_text');
         const ctForm = document.getElementById('chuongTrinhForm');
         const ctMessageDiv = document.getElementById('ct_message');
+        const currentImageInfo = document.getElementById('current_image_info');
 
         // Lấy nội dung hiện tại
         fetch('/api/chuongtrinh')
             .then(res => {
                 if (!res.ok) throw new Error('API not available yet');
-                return res.text();
+                return res.json();
             })
-            .then(text => {
-                ctText.value = text;
+            .then(data => {
+                ctText.value = data.text || '';
+                if (data.imageUrl) {
+                    currentImageInfo.innerHTML = `Hình ảnh hiện tại: <a href="${data.imageUrl}" target="_blank">Xem ảnh</a>`;
+                } else {
+                    currentImageInfo.innerHTML = 'Chưa có hình ảnh đính kèm.';
+                }
             })
             .catch(err => {
                 console.error("Error loading text:", err);
-                // ctText.value = ''; // Giữ trống nếu có lỗi
             });
 
         ctForm.addEventListener('submit', async (e) => {
@@ -184,15 +197,11 @@
             ctMessageDiv.className = '';
 
             const formData = new FormData(ctForm);
-            const data = new URLSearchParams(formData);
 
             try {
                 const response = await fetch('/api/admin/chuongtrinh', {
                     method: 'POST',
-                    body: data,
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded'
-                    }
+                    body: formData
                 });
 
                 if (response.ok) {
