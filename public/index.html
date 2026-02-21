@@ -205,12 +205,31 @@
                 </tbody>
             </table>
         </div>
+
+        <div id="roimangArea" style="display:none; margin-top: 20px;">
+            <h3 style="background-color: #FFFF00; padding: 5px; border: 1px solid #000; text-transform: uppercase;">Chi
+                tiết Rời mạng FTTH</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th class="cuoc-header" style="background-color: #FFFF00; width: 30%;">THUE_BAO</th>
+                        <th class="cuoc-header" style="background-color: #FFFF00; width: 40%;">GOI_CUOC</th>
+                        <th class="cuoc-header" style="background-color: #FFFF00; width: 30%;">NGAY_CHAN_CHAR</th>
+                    </tr>
+                </thead>
+                <tbody id="roimangBody">
+                    <!-- Javascript will populate this -->
+                </tbody>
+            </table>
+        </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', initialize);
 
         let rawData = [];
+        let cuocData = [];
+        let roimangData = [];
 
         // Configuration map for metrics based on Image
         // Key: Part of the metric name to match (case insensitive)
@@ -243,13 +262,18 @@
         async function initialize() {
             try {
                 // Fetch both data in parallel
-                const [respData, respCuoc] = await Promise.all([
+                const [respData, respCuoc, respRoimang] = await Promise.all([
                     fetch('/api/data'),
-                    fetch('/api/cuoc')
+                    fetch('/api/cuoc'),
+                    fetch('/api/roimang')
                 ]);
 
                 if (respCuoc.ok) {
                     cuocData = await respCuoc.json();
+                }
+
+                if (respRoimang.ok) {
+                    roimangData = await respRoimang.json();
                 }
 
                 if (!respData.ok) throw new Error('Failed');
@@ -458,18 +482,9 @@
 
             // Render Cước Section
             renderCuoc(row[0]);
-        }
 
-        let cuocData = [];
-        async function fetchCuocData() {
-            try {
-                const res = await fetch('/api/cuoc');
-                if (res.ok) {
-                    cuocData = await res.json();
-                }
-            } catch (e) {
-                console.error("Failed to fetch Cuoc data", e);
-            }
+            // Render Rời mạng FTTH Section
+            renderRoimang(row[0]);
         }
 
         // Helper to normalize name to code (e.g. Lê Thanh Sang -> SANGLT)
@@ -583,6 +598,60 @@
             } else {
                 container.style.display = 'none';
                 // Or display "No data found for [Code]"
+            }
+        }
+
+        function excelDateToJSDate(serial) {
+            if (!serial || isNaN(serial)) return serial;
+            var utc_days = Math.floor(serial - 25569);
+            var utc_value = utc_days * 86400;
+            var date_info = new Date(utc_value * 1000);
+            var fractional_day = serial - Math.floor(serial) + 0.0000001;
+            var total_seconds = Math.floor(86400 * fractional_day);
+            var seconds = total_seconds % 60;
+            total_seconds -= seconds;
+            var hours = Math.floor(total_seconds / (60 * 60));
+            var minutes = Math.floor(total_seconds / 60) % 60;
+
+            return `${date_info.getUTCMonth() + 1}/${date_info.getUTCDate()}/${date_info.getUTCFullYear()} ${hours}:${minutes < 10 ? '0' + minutes : minutes}`;
+        }
+
+        function renderRoimang(employeeName) {
+            const container = document.getElementById('roimangArea');
+            const tbody = document.getElementById('roimangBody');
+            tbody.innerHTML = '';
+
+            if (!roimangData || roimangData.length === 0) {
+                container.style.display = 'none';
+                return;
+            }
+
+            const code = getEmployeeCode(employeeName);
+
+            const filteredData = roimangData.filter(row => {
+                if (!row.STAFF_CODE_THU_CUOC) return false;
+                const rowCode = row.STAFF_CODE_THU_CUOC.toString();
+                const prefix = rowCode.split('_')[0];
+                return rowCode.startsWith(code + '_') || rowCode === code || (prefix.startsWith(code) && prefix.replace(code, '').match(/^\d*$/));
+            });
+
+            if (filteredData.length > 0) {
+                container.style.display = 'block';
+                filteredData.forEach(item => {
+                    const tr = document.createElement('tr');
+                    const thueBao = item.THUE_BAO || '';
+                    const goiCuoc = item.GOI_CUOC || '';
+                    const dateVal = excelDateToJSDate(item.NGAY_CHAN_CHAR) || '';
+
+                    tr.innerHTML = `
+                        <td style="text-align: left; padding-left: 10px; font-size: 14px; border: 1px solid #000;">${thueBao}</td>
+                        <td style="text-align: left; padding-left: 10px; font-size: 14px; border: 1px solid #000;">${goiCuoc}</td>
+                        <td style="text-align: right; padding-right: 10px; font-size: 14px; border: 1px solid #000;">${dateVal}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            } else {
+                container.style.display = 'none';
             }
         }
     </script>

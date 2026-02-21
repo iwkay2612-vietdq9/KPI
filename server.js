@@ -368,6 +368,27 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
     }
 });
 
+// API to get Rời mạng data
+app.get('/api/roimang', (req, res) => {
+    const filePath = path.join(__dirname, 'roimangftth.xlsx');
+
+    if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Data file not found' });
+    }
+
+    try {
+        const workbook = xlsx.readFile(filePath);
+        const sheetName = workbook.SheetNames[0]; // Read the first sheet
+        const worksheet = workbook.Sheets[sheetName];
+        // Read as array of objects with header row as keys
+        const data = xlsx.utils.sheet_to_json(worksheet);
+        res.json(data);
+    } catch (error) {
+        console.error("Error reading excel file:", error);
+        res.status(500).json({ error: 'Failed to read data file' });
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
