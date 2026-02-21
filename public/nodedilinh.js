@@ -68,6 +68,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const searchInput = document.getElementById('search-input');
     const searchResults = document.getElementById('search-results');
     let nodesData = []; // Array to store all parsed nodes
+    let currentHighlightedMarker = null; // Marker đang được tìm kiếm để giữ lại trên bản đồ
 
     async function loadKMLData() {
         try {
@@ -209,10 +210,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const nodeData = nodesData.find(n => n.name === name);
 
             if (nodeData) {
-                // Leaflet MarkerCluster support zoom into spiderfy
-                markers.zoomToShowLayer(nodeData.marker, () => {
-                    nodeData.marker.openPopup();
-                });
+                // Nếu có marker highlight trước đó, thì đưa nó về lại cluster group
+                if (currentHighlightedMarker && currentHighlightedMarker !== nodeData.marker) {
+                    map.removeLayer(currentHighlightedMarker);
+                    markers.addLayer(currentHighlightedMarker);
+                }
+
+                currentHighlightedMarker = nodeData.marker;
+
+                // Tách marker được chọn khỏi cluster và thêm trực tiếp vào map 
+                // để nó luôn hiển thị (không bị gom nhóm) ngay cả khi zoom out
+                markers.removeLayer(nodeData.marker);
+                map.addLayer(nodeData.marker);
+
+                // Di chuyển bản đồ đến vị trí node và mở popup
+                map.setView([nodeData.lat, nodeData.lon], 16);
+                nodeData.marker.openPopup();
             }
 
             searchResults.classList.add('hidden');
