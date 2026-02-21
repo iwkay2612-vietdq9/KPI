@@ -183,7 +183,35 @@ app.post('/api/admin/chuongtrinh', ctUpload.single('image'), (req, res) => {
 
     try {
         fs.writeFileSync(filePath, text);
-        res.send('Cập nhật chương trình kích thích kênh thành công!');
+
+        // 5. Tự động push lên GitHub
+        console.log("Bắt đầu tự động push Chương trình kích thích lên GitHub...");
+
+        const githubToken = process.env.GITHUB_TOKEN;
+        const repoUrl = process.env.REPO_URL;
+
+        const runGitPush = (cmd) => {
+            exec(`git config user.email "bot@admin.com" && git config user.name "Admin Bot" && ${cmd}`, (error, stdout, stderr) => {
+                if (error) {
+                    console.error(`Auto-push error log: ${error.message}`);
+                    if (stderr) console.error(`stderr: ${stderr}`);
+                } else {
+                    console.log(`Auto-push thành công! stdout: ${stdout}`);
+                }
+            });
+        };
+
+        if (githubToken && repoUrl) {
+            // Push trực tiếp qua URL chứa token, bỏ qua 'origin'
+            const pushCommand = `git add chuongtrinh.txt public/chuongtrinh_image* && git commit -m "Auto update Chuong trinh Kich thich" && git push https://${githubToken}@${repoUrl} HEAD:main -f`;
+            runGitPush(pushCommand);
+        } else {
+            console.log("Thiếu GITHUB_TOKEN hoặc REPO_URL. Thử commit local và push mặc định...");
+            const fallbackCommand = `git add chuongtrinh.txt public/chuongtrinh_image* && git commit -m "Auto update Chuong trinh Kich thich" && git push`;
+            runGitPush(fallbackCommand);
+        }
+
+        res.send('Cập nhật chương trình kích thích kênh thành công! Hệ thống đang đồng bộ lên đám mây...');
     } catch (err) {
         console.error("Error writing text file:", err);
         res.status(500).send('Lỗi ghi file: ' + err.message);
