@@ -181,14 +181,13 @@
             <tbody id="tableBody"></tbody>
         </table>
 
-        <!-- Bảng Cước Thu Trong Ngày Mới -->
+        <!-- Bảng Chi tiết Thu Cước -->
         <table id="cuocTiendoTable" style="display:none;">
             <thead>
                 <tr>
                     <th>Nhân Viên</th>
                     <th>Đầu kỳ</th>
                     <th>Cước ngày n-1</th>
-                    <th></th>
                     <th>Cước thu được<br>trong ngày</th>
                 </tr>
             </thead>
@@ -207,48 +206,6 @@
 
                 const dataTiendo = await resTiendo.json();
                 const dataCuoc = await resCuoc.json();
-
-                // Build a map of cuoc data by 'Nhân Viên' (Column 15)
-                // Col 16: Đầu kỳ, 17: Cước ngày n-1, 18: [blank], 19: Cước thu được
-                const cuocMap = {};
-                for (let i = 5; i < dataCuoc.length; i++) {
-                    const row = dataCuoc[i];
-                    if (row && row[15]) {
-                        cuocMap[row[15]] = [
-                            row[16] || 0,
-                            row[17] || 0,
-                            row[18] || 0,
-                            row[19] || 0
-                        ];
-                    }
-                }
-
-                let maxCols = 0;
-                dataTiendo.forEach(row => { if (row.length > maxCols) maxCols = row.length; });
-
-                // Pad all existing data arrays to maxCols so that appended columns align
-                for (let i = 0; i < dataTiendo.length; i++) {
-                    while (dataTiendo[i].length < maxCols) {
-                        dataTiendo[i].push("");
-                    }
-                }
-
-                // Header rows
-                dataTiendo[0].push("Cước thu", "", "", "");
-                dataTiendo[1].push("", "", "", "");
-                dataTiendo[2].push("Đầu kỳ", "Cước ngày n-1", "", "Cước thu được trong ngày");
-
-                // Data rows
-                for (let i = 3; i < dataTiendo.length; i++) {
-                    const empCode = dataTiendo[i][0];
-                    if (empCode && cuocMap[empCode]) {
-                        dataTiendo[i].push(...cuocMap[empCode]);
-                    } else if (empCode) {
-                        dataTiendo[i].push("", "", "", "");
-                    } else {
-                        dataTiendo[i].push("", "", "", "");
-                    }
-                }
 
                 renderTable(dataTiendo);
                 renderCuocTiendoTable(dataCuoc);
@@ -409,54 +366,69 @@
         }
 
         function renderCuocTiendoTable(data) {
-            if (!data || data.length < 5) return;
+            if (!data || data.length < 2) return;
+
+            // Tìm header row để xác định tên cột
+            // Dòng 0 thường là header của sheet cuoc
+            let headerRow = data[0] || [];
+
+            // Tìm các index cột dựa trên header
+            // Các cột cần: Nhân viên (alias), Đầu kỳ, Cước ngày n-1, Cước thu được trong ngày
+            // Thử tìm cột theo tên header, nếu không tìm được thì dùng index mặc định
+            const findCol = (keywords) => {
+                for (let c = 0; c < headerRow.length; c++) {
+                    const h = (headerRow[c] || '').toString().toLowerCase();
+                    if (keywords.some(k => h.includes(k))) return c;
+                }
+                return -1;
+            };
+
+            // Các index mặc định theo cấu trúc sheet cuoc đã biết
+            const colAlias = 15;   // Tên alias nhân viên (CNKD_LDG_...)
+            const colDauKy = 16;   // Đầu kỳ
+            const colN1 = 17;      // Cước ngày n-1
+            const colThu = 19;     // Cước thu được trong ngày
 
             document.getElementById('cuocTiendoTable').style.display = 'table';
             const tbody = document.getElementById('cuocTiendoBody');
+            tbody.innerHTML = '';
 
-            // Allow list of NV to filter correctly
-            const allowedEmployees = [
-                "CNKD_LDG_TAMDT", "CNKD_LDG_ANLT", "CNKD_LDG_LINHPM", "CNKD_LDG_SANGLT",
-                "CNKD_LDG_NHUANVD", "CNKD_LDG_HIEUBT", "CNKD_LDG_PHUONGNTT1", "CNKD_LDG_HANGBT",
-                "CNKD_LDG_SANGTV", "CNKD_LDG_THUONGNTH", "CNKD_LDG_HUONGVTT"
-            ];
+            // Accounting format
+            const formatMoney = (val) => {
+                const num = parseFloat(val) || 0;
+                const absVal = Math.abs(num).toLocaleString('en-US', { maximumFractionDigits: 0 });
+                return num < 0 ? `-$${absVal}` : `$${absVal}`;
+            };
 
             let count = 0;
-            // Dữ liệu cước bắt đầu từ dòng 5 (index 5) theo API
-            for (let i = 5; i < data.length; i++) {
+            // Duyệt từ dòng 1 trở đi (bỏ qua header)
+            for (let i = 1; i < data.length; i++) {
                 const row = data[i];
                 if (!row) continue;
 
-                const nvCode = row[1]; // Mã nhân viên thường nằm ở cột 1
-                const aliasCode = row[15]; // Tên nhân viên ở cột 15 (vd: CNKD_LDG_TAMDT)
+                const aliasCode = row[colAlias];
+                // Chỉ hiển thị các dòng có mã alias hợp lệ (bắt đầu bằng CNKD_)
+                if (!aliasCode || !aliasCode.toString().startsWith('CNKD_')) continue;
 
-                if (aliasCode && allowedEmployees.includes(aliasCode)) {
-                    const tr = document.createElement('tr');
+                const dauKy = parseFloat(row[colDauKy]) || 0;
+                const cuocN1 = parseFloat(row[colN1]) || 0;
+                const cuocThu = parseFloat(row[colThu]) || 0;
 
-                    // Background xám nhạt xen kẽ cho cột Nhân Viên
-                    const nvBg = count % 2 === 0 ? 'background-color: white;' : 'background-color: #DDEBF7;';
+                const nvBg = count % 2 === 0 ? 'background-color: white;' : 'background-color: #DDEBF7;';
 
-                    const dauKy = row[16] || 0;
-                    const cuocN1 = row[17] || 0;
-                    const blankCol = row[18] || cuocN1; // Lấy cột 17 tạm thời nếu 18 rỗng để format
-                    const cuocThu = row[19] || 0;
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td style="${nvBg} text-align: left; padding-left: 10px;">${aliasCode}</td>
+                    <td class="cuoc-dau-ky" style="font-weight: bold; text-align: right;">${formatMoney(dauKy)}</td>
+                    <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(cuocN1)}</td>
+                    <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(cuocThu)}</td>
+                `;
+                tbody.appendChild(tr);
+                count++;
+            }
 
-                    // Accounting format: $ value or -$ value
-                    const formatMoney = (val) => {
-                        const absVal = Math.abs(val).toLocaleString('en-US', { maximumFractionDigits: 0 });
-                        return val < 0 ? `-$${absVal}` : `$${absVal}`;
-                    };
-
-                    tr.innerHTML = `
-                        <td style="${nvBg} text-align: left; padding-left: 10px;">${aliasCode}</td>
-                        <td class="cuoc-dau-ky" style="font-weight: bold; text-align: right;">${formatMoney(dauKy)}</td>
-                        <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(cuocN1)}</td>
-                        <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(blankCol)}</td>
-                        <td class="cuoc-n-1" style="font-weight: bold; text-align: right;">${formatMoney(cuocThu)}</td>
-                    `;
-                    tbody.appendChild(tr);
-                    count++;
-                }
+            if (count === 0) {
+                document.getElementById('cuocTiendoTable').style.display = 'none';
             }
         }
     </script>
