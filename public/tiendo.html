@@ -391,13 +391,13 @@
 
             let count = 0;
             // Dữ liệu cước bắt đầu từ dòng 6 (index 6), row 5 là sub-header KH/Tiền
-            // Cột 16 = alias nhân viên (CNKD_...), 17 = Đầu kỳ, 18 = Cước n-1, 20 = Cước thu được
+            // Cột 17 = alias nhân viên (CNKD_...), 18 = Đầu kỳ, 19 = Cước n-1, 21 = Cước thu được
             for (let i = 6; i < data.length; i++) {
                 const row = data[i];
                 if (!row) continue;
 
-                const aliasCode = row[16]; // Alias nhân viên ở cột 16
-                console.log(`row[${i}][16]:`, aliasCode);
+                const aliasCode = row[17]; // Alias nhân viên ở cột 17
+                console.log(`row[${i}][17]:`, aliasCode);
 
                 if (!aliasCode) continue;
                 const aliasStr = aliasCode.toString().trim();
@@ -405,9 +405,9 @@
                 // Hiển thị nếu có trong danh sách HOẶC bắt đầu bằng CNKD_
                 if (!allowedEmployees.includes(aliasStr) && !aliasStr.startsWith('CNKD_')) continue;
 
-                const dauKy = parseFloat(row[17]) || 0;
-                const cuocN1 = parseFloat(row[18]) || 0;
-                const cuocThu = parseFloat(row[20]) || 0;
+                const dauKy = parseFloat(row[18]) || 0;
+                const cuocN1 = parseFloat(row[19]) || 0;
+                const cuocThu = parseFloat(row[21]) || 0;
 
                 const nvBg = count % 2 === 0 ? 'background-color: white;' : 'background-color: #DDEBF7;';
 
