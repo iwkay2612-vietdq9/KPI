@@ -180,6 +180,30 @@
         </form>
         <div id="ct_message" style="margin-top: 15px; font-size: 14px;"></div>
 
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h1 style="color: #e67e22;">🔑 Đổi Mật Khẩu Truy Cập Trang Web</h1>
+        <form id="changePasswordForm">
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="cp_admin_password" style="display:block; margin-bottom:5px;">Mật khẩu Admin:</label>
+                <input type="password" id="cp_admin_password" name="adminPassword" required
+                    style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="cp_new_password" style="display:block; margin-bottom:5px;">Mật khẩu truy cập mới:</label>
+                <input type="password" id="cp_new_password" name="newPassword" required
+                    style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <div style="margin-bottom: 15px; text-align: left;">
+                <label for="cp_confirm_password" style="display:block; margin-bottom:5px;">Xác nhận mật khẩu
+                    mới:</label>
+                <input type="password" id="cp_confirm_password" required
+                    style="width:100%; padding:8px; box-sizing:border-box;">
+            </div>
+            <button type="submit" style="background-color: #e67e22;">Đổi mật khẩu truy cập</button>
+        </form>
+        <div id="cp_message" style="margin-top: 15px; font-size: 14px;"></div>
+
         <a href="/" class="back-link">← Quay lại trang chủ</a>
     </div>
 
@@ -377,6 +401,48 @@
                 console.error('Error:', error);
                 ctMessageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
                 ctMessageDiv.className = 'error';
+            }
+        });
+        // Đoạn code cho form Đổi Mật Khẩu Truy Cập
+        const cpForm = document.getElementById('changePasswordForm');
+        const cpMessageDiv = document.getElementById('cp_message');
+
+        cpForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            cpMessageDiv.textContent = '';
+            cpMessageDiv.className = '';
+
+            const adminPassword = document.getElementById('cp_admin_password').value;
+            const newPassword = document.getElementById('cp_new_password').value;
+            const confirmPassword = document.getElementById('cp_confirm_password').value;
+
+            if (newPassword !== confirmPassword) {
+                cpMessageDiv.textContent = 'Mật khẩu mới và xác nhận không khớp!';
+                cpMessageDiv.className = 'error';
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/admin/change-site-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminPassword, newPassword })
+                });
+
+                if (response.ok) {
+                    const text = await response.text();
+                    cpMessageDiv.textContent = text;
+                    cpMessageDiv.className = 'success';
+                    cpForm.reset();
+                } else {
+                    const text = await response.text();
+                    cpMessageDiv.textContent = 'Lỗi: ' + text;
+                    cpMessageDiv.className = 'error';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                cpMessageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
+                cpMessageDiv.className = 'error';
             }
         });
 

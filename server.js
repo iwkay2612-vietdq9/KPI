@@ -5,9 +5,24 @@ const path = require('path');
 const fs = require('fs');
 const { exec } = require('child_process');
 const AdmZip = require('adm-zip');
+const session = require('express-session');
 
 const app = express();
 const port = 3000;
+
+// --- Site password helpers ---
+const SITE_PASSWORD_FILE = path.join(__dirname, 'site_password.txt');
+
+function getSitePassword() {
+    if (fs.existsSync(SITE_PASSWORD_FILE)) {
+        return fs.readFileSync(SITE_PASSWORD_FILE, 'utf8').trim();
+    }
+    return 'Dilinh@2026'; // default
+}
+
+function setSitePassword(newPassword) {
+    fs.writeFileSync(SITE_PASSWORD_FILE, newPassword, 'utf8');
+}
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -35,12 +50,62 @@ const ctStorage = multer.diskStorage({
 });
 const ctUpload = multer({ storage: ctStorage });
 
-// Serve static files from 'public' directory
-app.use(express.static('public'));
+// Session setup
+app.use(session({
+    secret: 'kpi-dilinh-secret-key-2026',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 } // 7 days
+}));
 
 // Parse JSON and URL-encoded bodies for form submits
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// --- Login API (before auth middleware) ---
+app.post('/api/login', (req, res) => {
+    const { password } = req.body;
+    const sitePassword = getSitePassword();
+    if (password === sitePassword) {
+        req.session.authenticated = true;
+        return res.send('OK');
+    } else {
+        return res.status(401).send('Sai mật khẩu!');
+    }
+});
+
+app.get('/api/check-auth', (req, res) => {
+    if (req.session && req.session.authenticated) {
+        return res.json({ authenticated: true });
+    }
+    return res.status(401).json({ authenticated: false });
+});
+
+app.post('/api/logout', (req, res) => {
+    req.session.destroy();
+    res.send('OK');
+});
+
+// --- Auth middleware: protect everything except login page ---
+app.use((req, res, next) => {
+    // Allow login page and its assets
+    if (req.path === '/login.html' || req.path === '/api/login' || req.path === '/api/check-auth') {
+        return next();
+    }
+    // Check session
+    if (req.session && req.session.authenticated) {
+        return next();
+    }
+    // If requesting HTML page or root, redirect to login
+    if (req.path === '/' || req.path.endsWith('.html')) {
+        return res.redirect('/login.html?redirect=' + encodeURIComponent(req.path));
+    }
+    // For API calls, return 401
+    return res.status(401).json({ error: 'Chưa đăng nhập' });
+});
+
+// Serve static files from 'public' directory
+app.use(express.static('public'));
 
 // API to get Excel data
 app.get('/api/data', (req, res) => {
@@ -477,6 +542,24 @@ app.get('/api/roitivi', (req, res) => {
     } catch (error) {
         console.error("Error reading excel file:", error);
         res.status(500).json({ error: 'Failed to read data file' });
+    }
+});
+
+// API to change site access password
+app.post('/api/admin/change-site-password', (req, res) => {
+    const { adminPassword, newPassword } = req.body;
+    if (adminPassword !== 'admin123') {
+        return res.status(401).send('Sai mật khẩu Admin!');
+    }
+    if (!newPassword || newPassword.length < 4) {
+        return res.status(400).send('Mật khẩu mới phải có ít nhất 4 ký tự!');
+    }
+    try {
+        setSitePassword(newPassword);
+        res.send('Đổi mật khẩu truy cập thành công!');
+    } catch (err) {
+        console.error('Error changing site password:', err);
+        res.status(500).send('Lỗi: ' + err.message);
     }
 });
 
