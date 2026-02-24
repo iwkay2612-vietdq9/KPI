@@ -3,3 +3,4 @@ uploaded_data.xlsx
 .env
 .DS_Store
 Thumbs.db
+access_logs.json

@@ -82,6 +82,49 @@
         .back-link:hover {
             text-decoration: underline;
         }
+
+        /* Access logs table styles */
+        .access-table-wrap {
+            max-height: 500px;
+            overflow-y: auto;
+            margin-top: 10px;
+            border: 1px solid #e0e0e0;
+            border-radius: 6px;
+        }
+        .access-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+            text-align: left;
+        }
+        .access-table th {
+            background: #2c3e50;
+            color: #fff;
+            padding: 8px 6px;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        .access-table td {
+            padding: 6px;
+            border-bottom: 1px solid #eee;
+            word-break: break-all;
+        }
+        .access-table tr:hover td {
+            background: #f0f8ff;
+        }
+        .access-count {
+            font-size: 13px;
+            color: #7f8c8d;
+            margin-top: 8px;
+        }
+        .btn-danger {
+            background-color: #e74c3c;
+            margin-top: 10px;
+        }
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
     </style>
 </head>
 
@@ -203,6 +246,30 @@
             <button type="submit" style="background-color: #e67e22;">Đổi mật khẩu truy cập</button>
         </form>
         <div id="cp_message" style="margin-top: 15px; font-size: 14px;"></div>
+
+        <hr style="margin: 30px 0; border: 0; border-top: 1px solid #ddd;">
+
+        <h1 style="color: #8e44ad;">📍 Lịch Sử Truy Cập</h1>
+        <p style="font-size:13px; color:#7f8c8d; margin-bottom:10px;">Ghi nhận vị trí và thời gian người dùng truy cập trang web.</p>
+        <div class="access-count" id="accessCount"></div>
+        <div class="access-table-wrap">
+            <table class="access-table" id="accessTable">
+                <thead>
+                    <tr>
+                        <th>STT</th>
+                        <th>Thời gian</th>
+                        <th>IP</th>
+                        <th>Vị trí</th>
+                        <th>Trang</th>
+                    </tr>
+                </thead>
+                <tbody id="accessBody">
+                    <tr><td colspan="5" style="text-align:center; padding:20px;">Đang tải...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <button class="btn-danger" id="clearLogsBtn" type="button">🗑️ Xóa toàn bộ lịch sử</button>
+        <div id="access_message" style="margin-top: 10px; font-size: 14px;"></div>
 
         <a href="/" class="back-link">← Quay lại trang chủ</a>
     </div>
@@ -443,6 +510,68 @@
                 console.error('Error:', error);
                 cpMessageDiv.textContent = 'Đã xảy ra lỗi kết nối.';
                 cpMessageDiv.className = 'error';
+            }
+        });
+
+        // --- Access Logs ---
+        async function loadAccessLogs() {
+            try {
+                const res = await fetch('/api/admin/access-logs');
+                if (!res.ok) throw new Error('Failed to load');
+                const logs = await res.json();
+                const tbody = document.getElementById('accessBody');
+                const countDiv = document.getElementById('accessCount');
+                countDiv.textContent = `Tổng: ${logs.length} bản ghi`;
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:20px; color:#999;">Chưa có lịch sử truy cập.</td></tr>';
+                    return;
+                }
+
+                // Show max 200 records
+                const display = logs.slice(0, 200);
+                tbody.innerHTML = display.map((log, i) => {
+                    const dt = new Date(log.timestamp);
+                    const timeStr = dt.toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+                    const location = [log.city, log.region, log.country].filter(v => v && v !== 'N/A' && v !== '').join(', ');
+                    return `<tr>
+                        <td>${i + 1}</td>
+                        <td>${timeStr}</td>
+                        <td>${log.ip || 'N/A'}</td>
+                        <td>${location || 'Không xác định'}</td>
+                        <td>${log.page || '/'}</td>
+                    </tr>`;
+                }).join('');
+            } catch (err) {
+                console.error('Error loading access logs:', err);
+                document.getElementById('accessBody').innerHTML = '<tr><td colspan="5" style="text-align:center; color:#e74c3c;">Lỗi tải dữ liệu.</td></tr>';
+            }
+        }
+        loadAccessLogs();
+
+        document.getElementById('clearLogsBtn').addEventListener('click', async () => {
+            const pw = prompt('Nhập mật khẩu Admin để xóa lịch sử:');
+            if (!pw) return;
+            const msgDiv = document.getElementById('access_message');
+            try {
+                const res = await fetch('/api/admin/access-logs', {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ adminPassword: pw })
+                });
+                if (res.ok) {
+                    const text = await res.text();
+                    msgDiv.textContent = text;
+                    msgDiv.className = 'success';
+                    loadAccessLogs();
+                } else {
+                    const text = await res.text();
+                    msgDiv.textContent = 'Lỗi: ' + text;
+                    msgDiv.className = 'error';
+                }
+            } catch (err) {
+                msgDiv.textContent = 'Lỗi kết nối.';
+                msgDiv.className = 'error';
             }
         });
 

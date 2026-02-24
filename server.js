@@ -6,6 +6,8 @@ const fs = require('fs');
 const { exec } = require('child_process');
 const AdmZip = require('adm-zip');
 const session = require('express-session');
+const http = require('http');
+const https = require('https');
 
 const app = express();
 const port = 3000;
@@ -22,6 +24,58 @@ function getSitePassword() {
 
 function setSitePassword(newPassword) {
     fs.writeFileSync(SITE_PASSWORD_FILE, newPassword, 'utf8');
+}
+
+// --- Access logs helpers ---
+const ACCESS_LOG_FILE = path.join(__dirname, 'access_logs.json');
+const MAX_ACCESS_LOGS = 500;
+
+function readAccessLogs() {
+    try {
+        if (fs.existsSync(ACCESS_LOG_FILE)) {
+            return JSON.parse(fs.readFileSync(ACCESS_LOG_FILE, 'utf8'));
+        }
+    } catch (e) {
+        console.error('Error reading access logs:', e);
+    }
+    return [];
+}
+
+function writeAccessLogs(logs) {
+    try {
+        fs.writeFileSync(ACCESS_LOG_FILE, JSON.stringify(logs, null, 2), 'utf8');
+    } catch (e) {
+        console.error('Error writing access logs:', e);
+    }
+}
+
+function fetchIpInfo(ip) {
+    return new Promise((resolve) => {
+        // Skip private/local IPs
+        if (!ip || ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.') || ip === '::ffff:127.0.0.1') {
+            return resolve({ city: 'Local', region: 'Local', country: 'Local', loc: '' });
+        }
+        const url = `https://ipinfo.io/${ip}/json`;
+        https.get(url, { timeout: 3000 }, (res) => {
+            let data = '';
+            res.on('data', chunk => data += chunk);
+            res.on('end', () => {
+                try {
+                    const info = JSON.parse(data);
+                    resolve({
+                        city: info.city || 'N/A',
+                        region: info.region || 'N/A',
+                        country: info.country || 'N/A',
+                        loc: info.loc || ''
+                    });
+                } catch {
+                    resolve({ city: 'Không xác định', region: '', country: '', loc: '' });
+                }
+            });
+        }).on('error', () => {
+            resolve({ city: 'Không xác định', region: '', country: '', loc: '' });
+        });
+    });
 }
 
 // Configure multer for file uploads
@@ -104,8 +158,53 @@ app.use((req, res, next) => {
     return res.status(401).json({ error: 'Chưa đăng nhập' });
 });
 
+// --- Access logging middleware: log every HTML page visit ---
+app.use(async (req, res, next) => {
+    // Only log HTML page visits (not API calls, not static assets like .css/.js/.png)
+    if (req.method === 'GET' && (req.path === '/' || req.path.endsWith('.html')) && req.path !== '/login.html') {
+        try {
+            const ip = (req.headers['x-forwarded-for'] || req.ip || '').split(',')[0].trim();
+            const geoInfo = await fetchIpInfo(ip);
+            const logEntry = {
+                ip: ip,
+                city: geoInfo.city,
+                region: geoInfo.region,
+                country: geoInfo.country,
+                loc: geoInfo.loc,
+                page: req.path,
+                userAgent: req.headers['user-agent'] || '',
+                timestamp: new Date().toISOString()
+            };
+            const logs = readAccessLogs();
+            logs.unshift(logEntry); // newest first
+            if (logs.length > MAX_ACCESS_LOGS) {
+                logs.length = MAX_ACCESS_LOGS;
+            }
+            writeAccessLogs(logs);
+        } catch (err) {
+            console.error('Access log error:', err);
+        }
+    }
+    next();
+});
+
 // Serve static files from 'public' directory
 app.use(express.static('public'));
+
+// --- Admin: Access logs API ---
+app.get('/api/admin/access-logs', (req, res) => {
+    const logs = readAccessLogs();
+    res.json(logs);
+});
+
+app.delete('/api/admin/access-logs', (req, res) => {
+    const { adminPassword } = req.body;
+    if (adminPassword !== 'admin123') {
+        return res.status(401).send('Sai mật khẩu Admin!');
+    }
+    writeAccessLogs([]);
+    res.send('Đã xóa toàn bộ lịch sử truy cập!');
+});
 
 // API to get Excel data
 app.get('/api/data', (req, res) => {
